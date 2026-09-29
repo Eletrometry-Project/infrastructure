@@ -1,0 +1,34 @@
+[Unit]
+Description=Eletrometry SQS para RDS MySQL
+Wants=network-online.target
+After=network-online.target
+ConditionPathExists=/etc/eletrometry/mysql-password
+StartLimitIntervalSec=0
+
+[Service]
+Type=simple
+User=eletrometry
+Group=eletrometry
+WorkingDirectory=/opt/eletrometry
+LoadCredential=mysql-password:/etc/eletrometry/mysql-password
+Environment=PYTHONUNBUFFERED=1
+Environment=PYTHONDONTWRITEBYTECODE=1
+ExecStart=/opt/eletrometry/venv/bin/python /opt/eletrometry/run_service.py
+Restart=always
+RestartSec=15
+TimeoutStopSec=30
+UMask=0077
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectSystem=strict
+ProtectHome=true
+ProtectKernelTunables=true
+ProtectKernelModules=true
+ProtectControlGroups=true
+RestrictSUIDSGID=true
+CapabilityBoundingSet=
+StandardOutput=journal
+StandardError=journal
+
+[Install]
+WantedBy=multi-user.target

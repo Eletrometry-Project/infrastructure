@@ -1,0 +1,6 @@
+bucket       = "SUBSTITUA_BUCKET_DE_STATE"
+key          = "eletrometry/etapa1/terraform.tfstate"
+region       = "us-east-1"
+profile      = "eletrometry-lab"
+encrypt      = true
+use_lockfile = true
