@@ -8,7 +8,7 @@ import unittest
 import mysql.connector
 
 
-repo_path = Path(os.environ["CONSUMER_REPO_PATH"])
+repo_path = Path(os.environ.get("CONSUMER_REPO_PATH", Path(__file__).parents[1] / "consumer"))
 spec = importlib.util.spec_from_file_location("upstream_consumer", repo_path / "consumidor_sqs_mysql.py")
 consumer = importlib.util.module_from_spec(spec)
 spec.loader.exec_module(consumer)

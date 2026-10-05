@@ -1,4 +1,0 @@
-# Para uso em equipe, copiar para backend.tf e preencher backend.hcl.
-terraform {
-  backend "s3" {}
-}

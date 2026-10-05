@@ -1,0 +1,29 @@
+[Unit]
+Description=Eletrometry simulador continuo de tres cabines
+Wants=network-online.target eletrometry-consumer.service
+After=network-online.target eletrometry-consumer.service
+StartLimitIntervalSec=0
+
+[Service]
+Type=simple
+User=eletrometry
+Group=eletrometry
+StateDirectory=eletrometry-simulator
+WorkingDirectory=/var/lib/eletrometry-simulator
+Environment=PYTHONUNBUFFERED=1
+Environment=PYTHONDONTWRITEBYTECODE=1
+ExecStart=/opt/eletrometry/venv/bin/python /opt/eletrometry/lab_remote.py live
+Restart=always
+RestartSec=30
+KillSignal=SIGINT
+TimeoutStopSec=90
+UMask=0077
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectSystem=strict
+ProtectHome=true
+StandardOutput=journal
+StandardError=journal
+
+[Install]
+WantedBy=multi-user.target

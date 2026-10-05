@@ -2,9 +2,6 @@ resource "aws_sqs_queue" "dlq" {
   name                      = "${var.queue_name}-dlq"
   message_retention_seconds = 1209600
   sqs_managed_sse_enabled   = true
-  lifecycle {
-    prevent_destroy = true
-  }
 }
 
 resource "aws_sqs_queue" "telemetry" {
@@ -18,9 +15,6 @@ resource "aws_sqs_queue" "telemetry" {
     deadLetterTargetArn = aws_sqs_queue.dlq.arn
     maxReceiveCount     = 5
   })
-  lifecycle {
-    prevent_destroy = true
-  }
 }
 
 resource "aws_sqs_queue_redrive_allow_policy" "dlq" {
@@ -41,9 +35,5 @@ resource "aws_iot_topic_rule" "telemetry" {
     queue_url  = aws_sqs_queue.telemetry.url
     role_arn   = local.iot_sqs_role_arn
     use_base64 = false
-  }
-  depends_on = [aws_iam_role_policy.iot_sqs]
-  lifecycle {
-    prevent_destroy = true
   }
 }

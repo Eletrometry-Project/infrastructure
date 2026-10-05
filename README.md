@@ -1,44 +1,79 @@
-# Eletrometry — etapa 1, criação do zero (revisão 2)
+# Eletrometry — etapa 1 integrada (revisao 4)
 
-Atualizado em 29/09/2026 após confirmação do hard reset. O MD é a especificação do ambiente a reconstruir. **Não é necessário ter VPC, EC2, RDS, fila ou regra IoT criados previamente.** Não há importações nem modos adopt/existing da infraestrutura nesta revisão.
+Simulador de tres cabines na EC2 → IoT Core → SQS → consumidor na EC2 → RDS MySQL.
+O ZIP inclui o codigo original do simulador em `telemetry/` e do consumidor em `consumer/`.
+Administracao, publicacao de teste e verificacao usam SSM (HTTPS); SSH nao e obrigatorio.
+Load balancer, site e Grafana continuam na etapa 2; S3/Glue/Athena na etapa 3.
 
-Extraia este ZIP em uma **pasta nova**. Não sobreponha à versão anterior: arquivos antigos de importação poderiam permanecer no diretório. Esta revisão destina-se ao cenário confirmado de infraestrutura ainda não aplicada; não use a troca de arquivos como migração de um state já implantado.
+## Ja tem a infraestrutura funcionando? Comece aqui
 
-## O que o Terraform cria
+1. Inicie o Learner Lab e atualize as credenciais do perfil `eletrometry-lab` no computador.
+2. Extraia o ZIP em uma pasta separada. Copie **somente `lab.ps1` e `app-bundle.tar.gz`**
+   para a raiz da pasta ANTIGA onde voce aplicou o Terraform. Substitua os dois arquivos.
+   Mantenha `infra/terraform.tfstate`, `terraform.tfvars`, `.terraform` e `access` no lugar.
+3. Abra o PowerShell nessa pasta antiga e execute:
 
-| Parte | Recursos |
+```powershell
+Unblock-File .\lab.ps1
+Set-ExecutionPolicy -Scope Process -ExecutionPolicy RemoteSigned -Force
+.\lab.ps1 atualizar
+.\lab.ps1 simular
+.\lab.ps1 status
+```
+
+`atualizar` transfere o codigo incluido neste ZIP para a EC2 e inicia a telemetria continua.
+Mantem o banco, o schema, as senhas e os dados existentes. Nao executa Terraform apply.
+`simular` leva cerca de 2–4 minutos e exige a chegada dos 372 eventos daquela execucao no MySQL.
+`status` mostra o endpoint consultado, banco/tabela, servicos, total e ultimas leituras.
+Os comandos acima sao para executar. Mensagens como `OK` sao resultados, nao comandos.
+Se qualquer comando der erro, pare e envie a saida; nao repita `atualizar`/`simular` indiscriminadamente.
+
+## Comandos de uso
+
+| Comando | Efeito |
 |---|---|
-| Rede | VPC, duas subnets públicas, duas privadas de banco em duas AZs, internet gateway, tabelas de rotas e associações. |
-| Segurança | SGs e regras: SSH só do IP administrativo /32; MySQL só do SG da EC2; RDS sem acesso público. |
-| Ingestão | Fila SQS Standard eletrometry-demo, DLQ, política de redrive e regra IoT para eletrometry/demo/+/+. |
-| IAM | Por padrão, roles EC2/IoT, políticas restritas à fila e instance profile. Há opção de referenciar roles autorizadas quando o Lab impede criação de IAM. |
-| SSH | Registra na AWS a chave **pública** gerada no computador. A chave privada fica somente com o usuário. |
-| Banco | RDS MySQL Single-AZ, db.t4g.micro, 20 GiB gp2 por padrão, criptografado, backup e proteção contra exclusão. |
-| Processamento | EC2 Ubuntu x86_64, disco criptografado e IMDSv2. Cloud-init instala o consumidor, dependências, CA do RDS e unit systemd. |
+| `.\lab.ps1 atualizar` | Instala esta revisao na EC2 atual e inicia simulador/consumidor. |
+| `.\lab.ps1 status` | Confere servicos, acesso ao MySQL, ultimas leituras e filas. |
+| `.\lab.ps1 testar` | Publica um evento IoT na EC2 e exige 1 linha com A=100/B=101/C=102 no banco. |
+| `.\lab.ps1 simular` | Executa 3 cabines por 120 s e confere os IDs de todos os 372 eventos no MySQL. |
+| `.\lab.ps1 iniciar` | Habilita e inicia a telemetria continua; nao cria processos duplicados. |
+| `.\lab.ps1 parar` | Para e desabilita apenas o simulador continuo; consumidor continua drenando a fila. |
+| `.\lab.ps1 logs` | Mostra logs recentes dos dois servicos e estado do cloud-init. |
+| `.\lab.ps1 entrar` | Sessao SSM opcional; exige Session Manager Plugin no PC. |
+| `.\lab.ps1 subir` | Terraform init, validate e apply; para ambientes novos ou mudancas de infraestrutura revisadas. |
 
-Fluxo: **simulador HTTPS no PC → IoT Core → SQS → consumidor EC2 → RDS MySQL**. O simulador existente continua sendo executado no PC.
+A telemetria continua permanece ativa apos `simular`: esse comando executa um teste adicional isolado
+por `run_id`. Para encerrar a geracao, use `parar`. O servico habilitado reinicia com a EC2,
+mas depende de o Lab, EC2 e RDS estarem ligados e das permissoes do instance profile.
+A contagem total do banco pode exceder 372 porque inclui outras execucoes.
+O simulador mantem arquivos locais e pendencias; em uso prolongado acompanhe espaco em disco.
+Arquivos de simulacao ficam em `/var/lib/eletrometry-simulator/`; o relatorio do ultimo teste
+aprovado fica em `latest-check.json`. Pendencias de uma execucao interrompida devem ser reenviadas
+com o subcomando `reenviar` do simulador (consulte `telemetry/README.md`).
 
-O `apply` cria a infraestrutura e dispara a instalação dos arquivos. **A tabela, o usuário MySQL e a senha da aplicação são preparados depois com o script interativo incluído**, para não colocar senhas em user-data/state. Só depois iniciamos e testamos o serviço. O estado do cloud-init deve ser conferido: EC2 criada não comprova instalação bem-sucedida.
+## Conta vazia: criacao do zero
 
-## Por onde começar
+Requisitos: AWS CLI v2, Terraform >=1.11 e <2, PowerShell 5.1 ou 7 e credenciais temporarias do Lab.
+Copie `infra/terraform.tfvars.example` para `infra/terraform.tfvars` e ajuste conta/perfil quando necessario.
+Execute `lab.ps1 subir`, revise o plano e aguarde o bootstrap; depois `status`, `testar` e `simular`.
+O bootstrap baixa os commits fixados dos dois repositorios, instala o banco e inicia ambos os servicos.
+O ZIP tambem contem essas mesmas fontes para revisao e atualizacao via SSM, sem git na EC2 atual.
+O acesso a GitHub, repositorios Ubuntu e PyPI e necessario no primeiro bootstrap.
 
-1. Ler `docs/IMPLANTACAO.md`, voltado a PowerShell/Windows.
-2. Gerar uma chave SSH local ou indicar uma chave de laboratório já disponível.
-3. Copiar `infra/terraform.tfvars.example` para `infra/terraform.tfvars`; ajustar seu IP público. A conta informada no inventário já está no exemplo.
-4. Conferir se o Lab permite criar IAM; se exigir roles próprias, configurar as opções documentadas. Terraform não altera as roles protegidas do Lab.
-5. Executar init, validate e testes; gerar e revisar plan; só depois executar apply.
-6. Seguir a preparação do banco/serviço e os testes de aceite.
+Nao aplique um state vazio sobre recursos antigos com os mesmos nomes. Nao apague o state.
+Copiar a nova pasta `infra` sobre uma instalacao anterior altera o user-data e pode RECRIAR a EC2;
+por isso, a atualizacao da aplicacao usa apenas os dois arquivos indicados acima.
 
-Não é necessário rodar inventário antes. O script `scripts/inventory.py` continua disponível para diagnóstico **após** a criação. Não é uma etapa de provisionamento.
+## Permissoes e escolhas do Lab
 
-## Arquivos importantes
+- Nenhuma role/policy IAM e criada: usa LabInstanceProfile e uma role existente na regra IoT.
+- O nome LabRole sozinho nao garante permissao. IoT precisa entregar na SQS; EC2 precisa publicar IoT,
+  consumir SQS e estar Online no SSM. O perfil local precisa consultar e executar comandos SSM.
+- Endpoint IoT e descoberto na conta, sem hostname fixo. O teste nunca pula IoT enviando direto a SQS.
+- RDS privado, TLS, SSH restrito e senhas geradas continuam. State/user-data contem segredos do Lab;
+  nao envie state, chave privada ou planos ao GitHub.
+- Sem NAT Gateway, bastion, Secrets Manager ou IAM adicionais obrigatorios.
+- Terraform destroy apaga o banco sem snapshot final nesta configuracao de laboratorio.
 
-- `infra/terraform.tfvars.example`: única configuração de exemplo para a aplicação.
-- `scripts/terraform.ps1`: pede a senha administrativa sem eco; separa ações Plan e Apply; não grava a senha no tfvars.
-- `deploy/`: instalador, adaptador systemd e preparação do banco.
-- `bootstrap-state/`: bucket de state opcional para operação em equipe, separado do futuro data lake.
-- `docs/ARQUITETURA.md`, `docs/TESTES.md`, `docs/VALIDACAO.md`: decisões, aceite e limites da verificação.
-
-**Load balancer: mantido no planejamento da etapa 2**, junto de site/Grafana; não é criado nesta etapa. As duas subnets públicas já permitem preparar essa evolução. Etapa 3: ingestão histórica S3, Glue/PySpark, Trusted e Athena. Bastion, Docker, servidores privados e saída de rede da aplicação serão definidos na etapa 2.
-
-As permissões efetivas, tipos/versões permitidos e custos dependem da conta. Esta entrega não foi aplicada à AWS. O usuário precisa fornecer somente entradas do novo ambiente e recursos de IAM do Lab se a conta os exigir; nenhum ID da infraestrutura apagada é necessário.
+Analise e limites: [docs/ANALISE_TELEMETRIA.md](docs/ANALISE_TELEMETRIA.md).
+Testes realizados: [docs/VALIDACAO.md](docs/VALIDACAO.md).

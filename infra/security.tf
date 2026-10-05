@@ -13,7 +13,7 @@ resource "aws_security_group" "database" {
 resource "aws_vpc_security_group_ingress_rule" "ssh" {
   security_group_id = aws_security_group.consumer.id
   description       = "IP administrativo individual"
-  cidr_ipv4         = var.admin_ipv4_cidr
+  cidr_ipv4         = local.admin_ipv4_cidr
   from_port         = 22
   to_port           = 22
   ip_protocol       = "tcp"

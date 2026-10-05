@@ -6,6 +6,7 @@ variable "aws_region" {
 variable "aws_account_id" {
   description = "ID da conta de destino; protege contra uso de credenciais de outra conta."
   type        = string
+  default     = "831154260318"
   validation {
     condition     = can(regex("^[0-9]{12}$", var.aws_account_id))
     error_message = "Informe os 12 digitos da conta AWS."
@@ -40,10 +41,12 @@ variable "availability_zones" {
 }
 
 variable "admin_ipv4_cidr" {
-  type = string
+  description = "null detecta o IPv4 publico automaticamente; use um /32 se precisar sobrescrever."
+  type        = string
+  default     = null
   validation {
-    condition     = can(cidrnetmask(var.admin_ipv4_cidr)) && can(regex("/32$", var.admin_ipv4_cidr)) && var.admin_ipv4_cidr != "0.0.0.0/32"
-    error_message = "Use seu IPv4 publico com /32; nunca 0.0.0.0/0."
+    condition     = var.admin_ipv4_cidr == null || (can(cidrnetmask(var.admin_ipv4_cidr)) && can(regex("/32$", var.admin_ipv4_cidr)) && var.admin_ipv4_cidr != "0.0.0.0/32")
+    error_message = "Use null para deteccao automatica ou seu IPv4 publico/32."
   }
 }
 
@@ -78,22 +81,18 @@ variable "consumer_root_encrypted" {
 }
 
 variable "instance_profile_name" {
-  description = "Obrigatorio somente quando create_consumer_iam=false."
+  description = "Instance profile PREEXISTENTE autorizado pelo Lab; nenhum IAM sera criado."
   type        = string
-  default     = null
-  validation {
-    condition     = var.create_consumer_iam || try(length(trimspace(var.instance_profile_name)) > 0, false)
-    error_message = "Informe o instance profile permitido pelo laboratorio."
-  }
+  default     = "LabInstanceProfile"
 }
 
 variable "iot_sqs_role_arn" {
-  description = "Obrigatorio somente quando create_iot_iam=false; role deve confiar em iot.amazonaws.com."
+  description = "Role PREEXISTENTE assumivel por IoT com sqs:SendMessage. null tenta LabRole, sem garantir que o Lab a autorize para IoT."
   type        = string
   default     = null
   validation {
-    condition     = var.create_iot_iam || can(regex("^arn:aws:iam::[0-9]{12}:role/.+$", var.iot_sqs_role_arn))
-    error_message = "Informe o ARN da role IoT permitida pelo laboratorio."
+    condition     = var.iot_sqs_role_arn == null || can(regex("^arn:aws:iam::[0-9]{12}:role/.+$", var.iot_sqs_role_arn))
+    error_message = "Informe null ou ARN de uma role existente autorizada para IoT."
   }
 }
 
@@ -122,7 +121,7 @@ variable "db_identifier" {
 }
 
 variable "db_engine_version" {
-  description = "null pesquisa versao padrao disponivel da familia mysql8.4; informar versao fixa a escolha."
+  description = "null pesquisa versao disponivel mais recente da familia mysql8.4; informar versao fixa a escolha."
   type        = string
   default     = null
 }
@@ -159,7 +158,7 @@ variable "db_master_username" {
 
 variable "db_backup_retention_days" {
   type    = number
-  default = 1
+  default = 0
   validation {
     condition     = var.db_backup_retention_days >= 0 && var.db_backup_retention_days <= 35
     error_message = "Retencao de backup deve estar entre 0 e 35 dias."
@@ -171,33 +170,8 @@ variable "db_max_allocated_storage" {
   default = 0
 }
 
-variable "db_password_mode" {
-  description = "write_only recebe senha efemera; managed usa Secrets Manager do RDS se permitido."
-  type        = string
-  default     = "write_only"
-  validation {
-    condition     = contains(["write_only", "managed"], var.db_password_mode)
-    error_message = "O banco novo exige write_only ou managed."
-  }
-}
 
-variable "db_master_password" {
-  description = "Apenas entrada efemera para password_wo. Nao grave em tfvars; use entrada segura no terminal."
-  type        = string
-  sensitive   = true
-  ephemeral   = true
-  default     = null
-  validation {
-    condition     = var.db_password_mode != "write_only" || try(length(var.db_master_password) >= 16, false)
-    error_message = "write_only exige senha de pelo menos 16 caracteres via TF_VAR_db_master_password."
-  }
-}
 
-variable "db_password_version" {
-  description = "Incrementar somente quando quiser aplicar nova senha write_only."
-  type        = number
-  default     = 1
-}
 
 variable "db_auto_minor_version_upgrade" {
   type    = bool
@@ -209,31 +183,22 @@ variable "aws_profile" {
   default     = "eletrometry-lab"
 }
 
-variable "create_consumer_iam" {
-  description = "Criar role, policy e instance profile EC2; false referencia perfil permitido pelo Lab."
-  type        = bool
-  default     = true
-}
 
-variable "create_iot_iam" {
-  description = "Criar role e policy IoT para SQS; false referencia role permitida pelo Lab."
-  type        = bool
-  default     = true
-}
 
 variable "existing_key_pair_name" {
-  description = "Opcional: key pair ja autorizado pelo Lab; null registra chave publica nova."
+  description = "Opcional: key pair ja autorizado pelo Lab; null gera e registra uma chave automaticamente."
   type        = string
   default     = null
 }
 
+
+
 variable "ssh_public_key_path" {
-  description = "Arquivo .pub local. Chave privada nunca passa pelo Terraform."
+  description = "Opcional: reutilizar o .pub que voce ja criou. null gera uma chave nova automaticamente."
   type        = string
-  default     = "~/.ssh/eletrometry.pub"
+  default     = null
   validation {
-    condition     = var.existing_key_pair_name != null || try(fileexists(pathexpand(var.ssh_public_key_path)), false)
-    error_message = "Gere a chave SSH local e indique seu arquivo .pub, ou informe existing_key_pair_name."
+    condition     = var.ssh_public_key_path == null || try(fileexists(pathexpand(var.ssh_public_key_path)), false)
+    error_message = "O arquivo .pub informado nao existe. Use null para gerar a chave automaticamente."
   }
 }
-

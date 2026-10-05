@@ -14,10 +14,11 @@ fi
 package_dir="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 runtime_config="$(realpath "$1")"
 repo_commit='038b257430c7fbad19cf0d42d7353a4f795eb5d3'
+simulator_commit='866a56ea07f48e18773d27288cc20ed97f90f4f1'
 
 export DEBIAN_FRONTEND=noninteractive
-apt-get update
-apt-get install -y python3-venv git curl ca-certificates
+apt-get -o Acquire::Retries=3 update
+apt-get -o Acquire::Retries=3 install -y python3-venv git curl ca-certificates
 if ! id eletrometry >/dev/null 2>&1; then
   useradd --system --home-dir /opt/eletrometry --shell /usr/sbin/nologin eletrometry
 fi
@@ -47,13 +48,24 @@ curl --fail --silent --show-error --location --retry 3 \
 chmod 0644 /opt/eletrometry/global-bundle.pem
 
 install -m 0644 "$runtime_config" /etc/eletrometry/runtime.json
+install -m 0644 "$package_dir/deploy/check_database.py" /opt/eletrometry/check_database.py
 install -m 0644 "$package_dir/deploy/run_service.py" /opt/eletrometry/run_service.py
 install -m 0640 "$package_dir/deploy/setup_database.py" /opt/eletrometry/setup_database.py
 install -m 0644 "$package_dir/sql/001-schema.sql" /opt/eletrometry/001-schema.sql
 install -m 0644 "$package_dir/deploy/eletrometry-consumer.service" /etc/systemd/system/eletrometry-consumer.service
 systemctl daemon-reload
-systemctl enable eletrometry-consumer.service
-
-echo 'Arquivos instalados. O instalador nao inicia/reinicia o consumidor.'
-echo 'Finalize com: sudo /opt/eletrometry/venv/bin/python /opt/eletrometry/setup_database.py'
-echo 'Confira e pare o consumidor manual antigo antes de iniciar o novo servico.'
+systemctl stop eletrometry-consumer.service
+/opt/eletrometry/venv/bin/python /opt/eletrometry/setup_database.py
+systemctl enable --now eletrometry-consumer.service
+# Fontes fixadas, iguais as copias incluidas no ZIP. O bootstrap baixa esses commits.
+install -d "$package_dir/consumer" "$package_dir/telemetry"
+cp /opt/eletrometry/repo/consumidor_sqs_mysql.py "$package_dir/consumer/"
+if [[ ! -d /opt/eletrometry/simulator-source/.git ]]; then
+  git clone https://github.com/Eletrometry-Project/telemetry-simulator.git /opt/eletrometry/simulator-source
+fi
+git -C /opt/eletrometry/simulator-source fetch origin "$simulator_commit"
+git -C /opt/eletrometry/simulator-source checkout --detach "$simulator_commit"
+test "$(git -C /opt/eletrometry/simulator-source rev-parse HEAD)" = "$simulator_commit"
+cp /opt/eletrometry/simulator-source/simulador_eletrometry.py /opt/eletrometry/simulator-source/*.json "$package_dir/telemetry/"
+bash "$package_dir/deploy/install_application.sh"
+echo 'Bootstrap concluido: consumidor e simulador continuo iniciados. Execute lab.ps1 testar.' 

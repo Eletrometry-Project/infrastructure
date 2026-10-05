@@ -9,9 +9,7 @@ resource "aws_db_instance" "mysql" {
   storage_encrypted            = var.db_storage_encrypted
   db_name                      = var.db_initial_database_name
   username                     = var.db_master_username
-  manage_master_user_password  = var.db_password_mode == "managed" ? true : null
-  password_wo                  = var.db_password_mode == "write_only" ? var.db_master_password : null
-  password_wo_version          = var.db_password_mode == "write_only" ? var.db_password_version : null
+  password                     = random_password.admin.result
   multi_az                     = false
   publicly_accessible          = false
   db_subnet_group_name         = local.db_subnet_group_name
@@ -19,14 +17,20 @@ resource "aws_db_instance" "mysql" {
   port                         = 3306
   backup_retention_period      = var.db_backup_retention_days
   auto_minor_version_upgrade   = var.db_auto_minor_version_upgrade
-  apply_immediately            = false
-  deletion_protection          = true
-  skip_final_snapshot          = false
-  final_snapshot_identifier    = "${var.db_identifier}-final"
+  apply_immediately            = true
+  deletion_protection          = false
+  skip_final_snapshot          = true
   copy_tags_to_snapshot        = true
   performance_insights_enabled = false
   monitoring_interval          = 0
-  lifecycle {
-    prevent_destroy = true
-  }
+}
+
+# Senhas geradas uma vez e mantidas no state local. Nao publicar o state.
+resource "random_password" "admin" {
+  length  = 24
+  special = false
+}
+resource "random_password" "consumer" {
+  length  = 24
+  special = false
 }
