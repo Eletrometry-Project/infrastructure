@@ -6,7 +6,7 @@ variable "aws_region" {
 variable "aws_account_id" {
   description = "ID da conta de destino; protege contra uso de credenciais de outra conta."
   type        = string
-  default     = "831154260318"
+  default     = "131374841349"
   validation {
     condition     = can(regex("^[0-9]{12}$", var.aws_account_id))
     error_message = "Informe os 12 digitos da conta AWS."
@@ -180,7 +180,7 @@ variable "db_auto_minor_version_upgrade" {
 variable "aws_profile" {
   description = "Perfil AWS CLI local; null usa credenciais do ambiente."
   type        = string
-  default     = "eletrometry-lab"
+  default     = "default"
 }
 
 

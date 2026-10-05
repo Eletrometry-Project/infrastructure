@@ -1,6 +1,6 @@
 # Os padroes ja usam esta conta e este perfil. Nao e obrigatorio copiar este arquivo.
 aws_account_id = "831154260318"
-aws_profile = "eletrometry-lab"
+aws_profile = "default"
 # Se o Lab disponibilizar outra role para IoT, informe o ARN aqui:
 # iot_sqs_role_arn = "arn:aws:iam::831154260318:role/NOME_REAL_AUTORIZADO"
 # Padrao EC2: LabInstanceProfile; padrao IoT: tenta LabRole (permissao nao garantida).
