@@ -1,0 +1,3015 @@
+{
+  "id": null,
+  "uid": "eletrometry-visao-geral",
+  "title": "Eletrometry • Visão geral das cabines",
+  "version": 2,
+  "schemaVersion": 39,
+  "editable": false,
+  "tags": [
+    "eletrometry",
+    "protótipo",
+    "regras-provisórias"
+  ],
+  "timezone": "browser",
+  "refresh": "30s",
+  "time": {
+    "from": "now-24h",
+    "to": "now"
+  },
+  "timepicker": {
+    "refresh_intervals": [
+      "30s",
+      "1m",
+      "5m"
+    ],
+    "time_options": [
+      "1m",
+      "1h",
+      "24h",
+      "7d",
+      "30d"
+    ]
+  },
+  "description": "Protótipo com dados reais do RDS e regras provisórias do grupo. Ver REGRAS-DASHBOARDS.md. Limites não certificados.",
+  "annotations": {
+    "list": []
+  },
+  "links": [
+    {
+      "title": "24 Horas",
+      "type": "link",
+      "url": "/d/eletrometry-visao-geral?from=now-24h&to=now&theme=light",
+      "targetBlank": false
+    },
+    {
+      "title": "1 Semana",
+      "type": "link",
+      "url": "/d/eletrometry-visao-geral?from=now-7d&to=now&theme=light",
+      "targetBlank": false
+    },
+    {
+      "title": "1 Mês",
+      "type": "link",
+      "url": "/d/eletrometry-visao-geral?from=now-30d&to=now&theme=light",
+      "targetBlank": false
+    }
+  ],
+  "panels": [
+    {
+      "id": 90,
+      "title": "",
+      "type": "canvas",
+      "gridPos": {
+        "x": 0,
+        "y": 0,
+        "w": 24,
+        "h": 2
+      },
+      "description": "",
+      "datasource": {
+        "type": "mysql",
+        "uid": "eletrometry-mysql"
+      },
+      "targets": [],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "decimals": 1,
+          "noValue": "Sem dados",
+          "color": {
+            "mode": "fixed",
+            "fixedColor": "#20234F"
+          },
+          "mappings": []
+        },
+        "overrides": []
+      },
+      "options": {
+        "inlineEditing": false,
+        "panZoom": false,
+        "zoomToContent": true,
+        "showAdvancedTypes": false,
+        "tooltip": {
+          "mode": "single",
+          "disableForOneClick": true
+        },
+        "root": {
+          "name": "Eletrometry",
+          "type": "frame",
+          "placement": {
+            "left": 0,
+            "top": 0,
+            "width": 1540,
+            "height": 50
+          },
+          "background": {
+            "color": {
+              "fixed": "#FFFFFF"
+            }
+          },
+          "elements": [
+            {
+              "name": "⚡ ELETROMETRY   /   VISÃO GERAL DAS CABINES-20-5",
+              "type": "text",
+              "placement": {
+                "left": 20,
+                "top": 5,
+                "width": 800,
+                "height": 36
+              },
+              "constraint": {
+                "horizontal": "scale",
+                "vertical": "scale"
+              },
+              "background": {
+                "color": {
+                  "fixed": "transparent"
+                }
+              },
+              "border": {
+                "radius": 8,
+                "width": 0
+              },
+              "config": {
+                "text": {
+                  "mode": "fixed",
+                  "fixed": "⚡ ELETROMETRY   /   VISÃO GERAL DAS CABINES"
+                },
+                "align": "left",
+                "valign": "middle",
+                "size": 22,
+                "color": {
+                  "fixed": "#20234F"
+                }
+              }
+            },
+            {
+              "name": "Dados reais · regras provisórias · período no seletor superior-840-5",
+              "type": "text",
+              "placement": {
+                "left": 840,
+                "top": 5,
+                "width": 680,
+                "height": 36
+              },
+              "constraint": {
+                "horizontal": "scale",
+                "vertical": "scale"
+              },
+              "background": {
+                "color": {
+                  "fixed": "transparent"
+                }
+              },
+              "border": {
+                "radius": 8,
+                "width": 0
+              },
+              "config": {
+                "text": {
+                  "mode": "fixed",
+                  "fixed": "Dados reais · regras provisórias · período no seletor superior"
+                },
+                "align": "left",
+                "valign": "middle",
+                "size": 15,
+                "color": {
+                  "fixed": "#77859F"
+                }
+              }
+            }
+          ]
+        }
+      },
+      "pluginVersion": "12.2.0"
+    },
+    {
+      "id": 1,
+      "title": "Quantidade de Alertas Críticos",
+      "type": "stat",
+      "gridPos": {
+        "x": 0,
+        "y": 2,
+        "w": 8,
+        "h": 4
+      },
+      "description": "Eventos confirmados por cabine/tipo/fase. Regras provisórias: consulte REGRAS-DASHBOARDS.md.",
+      "datasource": {
+        "type": "mysql",
+        "uid": "eletrometry-mysql"
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "mysql",
+            "uid": "eletrometry-mysql"
+          },
+          "rawSql": "WITH\nraw AS (SELECT * FROM leituras WHERE 1=1 AND coletado_em >= FROM_UNIXTIME(${__from}/1000.0) - INTERVAL 60 SECOND AND coletado_em <= LEAST(FROM_UNIXTIME(${__to}/1000.0), UTC_TIMESTAMP(3))),\nphases AS (SELECT event_id,cabine_id,tipo,coletado_em,recebido_em,'A' fase,CASE WHEN qualidade_a='ok' THEN fase_a END valor FROM raw UNION ALL SELECT event_id,cabine_id,tipo,coletado_em,recebido_em,'B' fase,CASE WHEN qualidade_b='ok' THEN fase_b END valor FROM raw UNION ALL SELECT event_id,cabine_id,tipo,coletado_em,recebido_em,'C' fase,CASE WHEN qualidade_c='ok' THEN fase_c END valor FROM raw),\nlimits AS (\n SELECT *,UNIX_TIMESTAMP(coletado_em) ts,\n CASE WHEN tipo='temperatura' THEN 60 ELSE (CASE cabine_id WHEN 'cabine-001' THEN 600.0 WHEN 'cabine-002' THEN 600.0 WHEN 'cabine-003' THEN 600.0 ELSE 600.0 END)*0.66 END ideal,\n CASE WHEN tipo='temperatura' THEN 70 ELSE (CASE cabine_id WHEN 'cabine-001' THEN 600.0 WHEN 'cabine-002' THEN 600.0 WHEN 'cabine-003' THEN 600.0 ELSE 600.0 END)*0.759 END lim1,\n CASE WHEN tipo='temperatura' THEN 80 ELSE (CASE cabine_id WHEN 'cabine-001' THEN 600.0 WHEN 'cabine-002' THEN 600.0 WHEN 'cabine-003' THEN 600.0 ELSE 600.0 END)*0.8580000000000001 END lim2,\n CASE WHEN tipo='temperatura' THEN 90 ELSE (CASE cabine_id WHEN 'cabine-001' THEN 600.0 WHEN 'cabine-002' THEN 600.0 WHEN 'cabine-003' THEN 600.0 ELSE 600.0 END)*0.957 END lim3\n FROM phases\n),\nlevels AS (\n SELECT *,CASE WHEN valor IS NULL THEN NULL WHEN valor>=lim3 THEN 3 WHEN valor>=lim2 THEN 2 WHEN valor>=lim1 THEN 1 ELSE 0 END severity,\n AVG(valor) OVER (PARTITION BY cabine_id,tipo,fase ORDER BY ts RANGE BETWEEN 10 PRECEDING AND 1 PRECEDING) baseline,\n MAX(CASE WHEN tipo='temperatura' THEN valor END) OVER (PARTITION BY cabine_id,fase ORDER BY ts RANGE BETWEEN 5 PRECEDING AND CURRENT ROW) temp_recent,\n LAG(ts) OVER w prev_ts,LEAD(ts) OVER w next_ts,\n LEAD(valor) OVER w next_val,\n ROW_NUMBER() OVER (PARTITION BY cabine_id,tipo,fase ORDER BY ts DESC,event_id DESC) rn\n FROM limits WINDOW w AS (PARTITION BY cabine_id,tipo,fase ORDER BY ts,event_id)\n),\nflags AS (\n SELECT *,LAG(severity) OVER (PARTITION BY cabine_id,tipo,fase ORDER BY ts,event_id) prev_severity,\n CASE WHEN next_val IS NOT NULL AND valor IS NOT NULL AND next_ts-ts<=5\n THEN GREATEST(0,LEAST(next_ts,UNIX_TIMESTAMP(LEAST(FROM_UNIXTIME(${__to}/1000.0), UTC_TIMESTAMP(3))))-GREATEST(ts,UNIX_TIMESTAMP(FROM_UNIXTIME(${__from}/1000.0)))) ELSE 0 END dt\n FROM levels\n),\ngroups_ AS (\n SELECT *,SUM(CASE WHEN severity>0 AND (COALESCE(prev_severity,0)=0 OR ts-prev_ts>5) THEN 1 ELSE 0 END)\n OVER (PARTITION BY cabine_id,tipo,fase ORDER BY ts,event_id) grp\n FROM flags\n),\nmarked AS (\n SELECT *,MIN(CASE WHEN severity>0 THEN ts END) OVER (PARTITION BY cabine_id,tipo,fase,grp) event_start\n FROM groups_\n),\nevent_groups AS (\n SELECT cabine_id,tipo,fase,grp,MIN(ts) first_ts,MAX(ts) last_ts,MAX(severity) severity,\n MAX(valor) peak,\n MIN(CASE WHEN ts-event_start>=10 OR (baseline>0 AND valor>=baseline*1.2 AND temp_recent>=70) THEN ts END) confirmed_ts,\n SUM(CASE WHEN severity=3 THEN dt ELSE 0 END) critical_seconds\n FROM marked WHERE severity>0 GROUP BY cabine_id,tipo,fase,grp\n),\nevents AS (\n SELECT * FROM event_groups WHERE confirmed_ts IS NOT NULL AND last_ts>=UNIX_TIMESTAMP(FROM_UNIXTIME(${__from}/1000.0))\n),\nlatest AS (SELECT * FROM levels WHERE rn=1 AND coletado_em>=FROM_UNIXTIME(${__from}/1000.0))\n,\ninventory AS (SELECT 'cabine-001' cabine_id UNION SELECT 'cabine-002' cabine_id UNION SELECT 'cabine-003' cabine_id UNION SELECT DISTINCT cabine_id FROM raw WHERE coletado_em>=FROM_UNIXTIME(${__from}/1000.0)),\ncounts AS (SELECT cabine_id,COUNT(*) n,SUM(critical_seconds) critical_seconds,SUM(severity=3) critical_count FROM events GROUP BY cabine_id),\nsummary AS (\n SELECT (SELECT COUNT(*) FROM events WHERE severity=3) alertas_criticos,\n (SELECT cabine_id FROM counts ORDER BY critical_seconds DESC,critical_count DESC,n DESC,cabine_id LIMIT 1) cabine_critica,\n (SELECT tipo FROM events GROUP BY tipo ORDER BY COUNT(*) DESC,SUM(critical_seconds) DESC,tipo LIMIT 1) tipo_problema,\n 100.0*(SELECT COUNT(*) FROM counts)/NULLIF((SELECT COUNT(*) FROM inventory),0) pct_ocorrencias,\n 100.0*COALESCE((SELECT SUM(n>=2) FROM counts),0)/NULLIF((SELECT COUNT(*) FROM inventory),0) pct_reincidencia,\n (SELECT COUNT(*) FROM raw WHERE coletado_em>=FROM_UNIXTIME(${__from}/1000.0)) amostras\n),\nrecent_events AS (SELECT * FROM events ORDER BY confirmed_ts DESC LIMIT 50)\nSELECT s.*,\n CASE e.severity WHEN 3 THEN 'Crítico' WHEN 2 THEN 'Moderado' WHEN 1 THEN 'Atenção' END Nivel,\n CASE WHEN e.tipo='temperatura' THEN 'Temperatura' WHEN e.tipo='corrente' THEN 'Sobrecarga' END Alerta,\n e.cabine_id Cabine,e.fase Fase,e.peak Valor,\n CASE WHEN e.tipo='temperatura' THEN '°C' WHEN e.tipo='corrente' THEN 'A' END Unidade,\n FROM_UNIXTIME(e.confirmed_ts) Confirmado,\n FROM_UNIXTIME(e.last_ts) Ultima_leitura\nFROM summary s LEFT JOIN recent_events e ON 1=1 ORDER BY e.confirmed_ts DESC",
+          "format": "table",
+          "editorMode": "code",
+          "rawQuery": true
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "decimals": 0,
+          "noValue": "Sem dados",
+          "color": {
+            "mode": "fixed",
+            "fixedColor": "#20234F"
+          },
+          "mappings": []
+        },
+        "overrides": []
+      },
+      "options": {
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "alertas_criticos",
+          "values": false
+        },
+        "colorMode": "value",
+        "graphMode": "none",
+        "textMode": "value",
+        "justifyMode": "center"
+      },
+      "pluginVersion": "12.2.0",
+      "transformations": [
+        {
+          "id": "filterFieldsByName",
+          "options": {
+            "include": {
+              "names": [
+                "alertas_criticos"
+              ]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "id": 2,
+      "title": "Cabine Mais Crítica",
+      "type": "stat",
+      "gridPos": {
+        "x": 8,
+        "y": 2,
+        "w": 8,
+        "h": 4
+      },
+      "description": "",
+      "datasource": {
+        "type": "datasource",
+        "uid": "-- Dashboard --"
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "datasource",
+            "uid": "-- Dashboard --"
+          },
+          "panelId": 1,
+          "withTransforms": false
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "none",
+          "decimals": 0,
+          "noValue": "Nenhuma ocorrência",
+          "color": {
+            "mode": "fixed",
+            "fixedColor": "#20234F"
+          },
+          "mappings": []
+        },
+        "overrides": []
+      },
+      "options": {
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "cabine_critica",
+          "values": false
+        },
+        "colorMode": "value",
+        "graphMode": "none",
+        "textMode": "value",
+        "justifyMode": "center"
+      },
+      "pluginVersion": "12.2.0",
+      "transformations": [
+        {
+          "id": "filterFieldsByName",
+          "options": {
+            "include": {
+              "names": [
+                "cabine_critica"
+              ]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "id": 3,
+      "title": "Tipo de Alerta Com Mais Problema",
+      "type": "stat",
+      "gridPos": {
+        "x": 16,
+        "y": 2,
+        "w": 8,
+        "h": 4
+      },
+      "description": "",
+      "datasource": {
+        "type": "datasource",
+        "uid": "-- Dashboard --"
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "datasource",
+            "uid": "-- Dashboard --"
+          },
+          "panelId": 1,
+          "withTransforms": false
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "none",
+          "decimals": 0,
+          "noValue": "Nenhuma ocorrência",
+          "color": {
+            "mode": "fixed",
+            "fixedColor": "#20234F"
+          },
+          "mappings": []
+        },
+        "overrides": [
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "tipo_problema"
+            },
+            "properties": [
+              {
+                "id": "mappings",
+                "value": [
+                  {
+                    "type": "value",
+                    "options": {
+                      "temperatura": {
+                        "text": "Temperatura"
+                      },
+                      "corrente": {
+                        "text": "Corrente"
+                      }
+                    }
+                  }
+                ]
+              }
+            ]
+          }
+        ]
+      },
+      "options": {
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "tipo_problema",
+          "values": false
+        },
+        "colorMode": "value",
+        "graphMode": "none",
+        "textMode": "value",
+        "justifyMode": "center"
+      },
+      "pluginVersion": "12.2.0",
+      "transformations": [
+        {
+          "id": "filterFieldsByName",
+          "options": {
+            "include": {
+              "names": [
+                "tipo_problema"
+              ]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "id": 4,
+      "title": "% de cabines com ocorrências registradas",
+      "type": "stat",
+      "gridPos": {
+        "x": 12,
+        "y": 6,
+        "w": 6,
+        "h": 4
+      },
+      "description": "",
+      "datasource": {
+        "type": "datasource",
+        "uid": "-- Dashboard --"
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "datasource",
+            "uid": "-- Dashboard --"
+          },
+          "panelId": 1,
+          "withTransforms": false
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "percent",
+          "decimals": 1,
+          "noValue": "Sem dados",
+          "color": {
+            "mode": "fixed",
+            "fixedColor": "#20234F"
+          },
+          "mappings": []
+        },
+        "overrides": []
+      },
+      "options": {
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "pct_ocorrencias",
+          "values": false
+        },
+        "colorMode": "value",
+        "graphMode": "none",
+        "textMode": "value",
+        "justifyMode": "center"
+      },
+      "pluginVersion": "12.2.0",
+      "transformations": [
+        {
+          "id": "filterFieldsByName",
+          "options": {
+            "include": {
+              "names": [
+                "pct_ocorrencias"
+              ]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "id": 5,
+      "title": "Índice de cabines com reincidência de alertas",
+      "type": "stat",
+      "gridPos": {
+        "x": 18,
+        "y": 6,
+        "w": 6,
+        "h": 4
+      },
+      "description": "",
+      "datasource": {
+        "type": "datasource",
+        "uid": "-- Dashboard --"
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "datasource",
+            "uid": "-- Dashboard --"
+          },
+          "panelId": 1,
+          "withTransforms": false
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "percent",
+          "decimals": 1,
+          "noValue": "Sem dados",
+          "color": {
+            "mode": "fixed",
+            "fixedColor": "#20234F"
+          },
+          "mappings": []
+        },
+        "overrides": []
+      },
+      "options": {
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "pct_reincidencia",
+          "values": false
+        },
+        "colorMode": "value",
+        "graphMode": "none",
+        "textMode": "value",
+        "justifyMode": "center"
+      },
+      "pluginVersion": "12.2.0",
+      "transformations": [
+        {
+          "id": "filterFieldsByName",
+          "options": {
+            "include": {
+              "names": [
+                "pct_reincidencia"
+              ]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "id": 91,
+      "title": "",
+      "type": "canvas",
+      "gridPos": {
+        "x": 0,
+        "y": 6,
+        "w": 12,
+        "h": 2
+      },
+      "description": "",
+      "datasource": {
+        "type": "mysql",
+        "uid": "eletrometry-mysql"
+      },
+      "targets": [],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "decimals": 1,
+          "noValue": "Sem dados",
+          "color": {
+            "mode": "fixed",
+            "fixedColor": "#20234F"
+          },
+          "mappings": []
+        },
+        "overrides": []
+      },
+      "options": {
+        "inlineEditing": false,
+        "panZoom": false,
+        "zoomToContent": true,
+        "showAdvancedTypes": false,
+        "tooltip": {
+          "mode": "single",
+          "disableForOneClick": true
+        },
+        "root": {
+          "name": "Eletrometry",
+          "type": "frame",
+          "placement": {
+            "left": 0,
+            "top": 0,
+            "width": 720,
+            "height": 45
+          },
+          "background": {
+            "color": {
+              "fixed": "#FFFFFF"
+            }
+          },
+          "elements": [
+            {
+              "name": "Visão das Cabines-14-4",
+              "type": "text",
+              "placement": {
+                "left": 14,
+                "top": 4,
+                "width": 650,
+                "height": 34
+              },
+              "constraint": {
+                "horizontal": "scale",
+                "vertical": "scale"
+              },
+              "background": {
+                "color": {
+                  "fixed": "transparent"
+                }
+              },
+              "border": {
+                "radius": 8,
+                "width": 0
+              },
+              "config": {
+                "text": {
+                  "mode": "fixed",
+                  "fixed": "Visão das Cabines"
+                },
+                "align": "left",
+                "valign": "middle",
+                "size": 24,
+                "color": {
+                  "fixed": "#20234F"
+                }
+              }
+            }
+          ]
+        }
+      },
+      "pluginVersion": "12.2.0"
+    },
+    {
+      "id": 20,
+      "title": "cabine-001",
+      "type": "canvas",
+      "gridPos": {
+        "x": 0,
+        "y": 8,
+        "w": 4,
+        "h": 8
+      },
+      "description": "Clique no título ou nos valores para abrir a cabine, mantendo o período. R=A; S=B; T=C. Cinza: dados ausentes, inválidos ou antigos.",
+      "datasource": {
+        "type": "mysql",
+        "uid": "eletrometry-mysql"
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "mysql",
+            "uid": "eletrometry-mysql"
+          },
+          "rawSql": "WITH\nraw AS (SELECT * FROM (SELECT * FROM leituras WHERE cabine_id='cabine-001' AND coletado_em >= FROM_UNIXTIME(${__from}/1000.0) - INTERVAL 60 SECOND AND coletado_em <= LEAST(FROM_UNIXTIME(${__to}/1000.0), UTC_TIMESTAMP(3)) AND tipo='corrente' ORDER BY coletado_em DESC,event_id DESC LIMIT 1) t_corrente UNION ALL SELECT * FROM (SELECT * FROM leituras WHERE cabine_id='cabine-001' AND coletado_em >= FROM_UNIXTIME(${__from}/1000.0) - INTERVAL 60 SECOND AND coletado_em <= LEAST(FROM_UNIXTIME(${__to}/1000.0), UTC_TIMESTAMP(3)) AND tipo='temperatura' ORDER BY coletado_em DESC,event_id DESC LIMIT 1) t_temperatura),\nphases AS (SELECT event_id,cabine_id,tipo,coletado_em,recebido_em,'A' fase,CASE WHEN qualidade_a='ok' THEN fase_a END valor FROM raw UNION ALL SELECT event_id,cabine_id,tipo,coletado_em,recebido_em,'B' fase,CASE WHEN qualidade_b='ok' THEN fase_b END valor FROM raw UNION ALL SELECT event_id,cabine_id,tipo,coletado_em,recebido_em,'C' fase,CASE WHEN qualidade_c='ok' THEN fase_c END valor FROM raw),\nlimits AS (\n SELECT *,UNIX_TIMESTAMP(coletado_em) ts,\n CASE WHEN tipo='temperatura' THEN 60 ELSE (CASE cabine_id WHEN 'cabine-001' THEN 600.0 WHEN 'cabine-002' THEN 600.0 WHEN 'cabine-003' THEN 600.0 ELSE 600.0 END)*0.66 END ideal,\n CASE WHEN tipo='temperatura' THEN 70 ELSE (CASE cabine_id WHEN 'cabine-001' THEN 600.0 WHEN 'cabine-002' THEN 600.0 WHEN 'cabine-003' THEN 600.0 ELSE 600.0 END)*0.759 END lim1,\n CASE WHEN tipo='temperatura' THEN 80 ELSE (CASE cabine_id WHEN 'cabine-001' THEN 600.0 WHEN 'cabine-002' THEN 600.0 WHEN 'cabine-003' THEN 600.0 ELSE 600.0 END)*0.8580000000000001 END lim2,\n CASE WHEN tipo='temperatura' THEN 90 ELSE (CASE cabine_id WHEN 'cabine-001' THEN 600.0 WHEN 'cabine-002' THEN 600.0 WHEN 'cabine-003' THEN 600.0 ELSE 600.0 END)*0.957 END lim3\n FROM phases\n),\nlevels AS (\n SELECT *,CASE WHEN valor IS NULL THEN NULL WHEN valor>=lim3 THEN 3 WHEN valor>=lim2 THEN 2 WHEN valor>=lim1 THEN 1 ELSE 0 END severity,\n AVG(valor) OVER (PARTITION BY cabine_id,tipo,fase ORDER BY ts RANGE BETWEEN 10 PRECEDING AND 1 PRECEDING) baseline,\n MAX(CASE WHEN tipo='temperatura' THEN valor END) OVER (PARTITION BY cabine_id,fase ORDER BY ts RANGE BETWEEN 5 PRECEDING AND CURRENT ROW) temp_recent,\n LAG(ts) OVER w prev_ts,LEAD(ts) OVER w next_ts,\n LEAD(valor) OVER w next_val,\n ROW_NUMBER() OVER (PARTITION BY cabine_id,tipo,fase ORDER BY ts DESC,event_id DESC) rn\n FROM limits WINDOW w AS (PARTITION BY cabine_id,tipo,fase ORDER BY ts,event_id)\n),\nflags AS (\n SELECT *,LAG(severity) OVER (PARTITION BY cabine_id,tipo,fase ORDER BY ts,event_id) prev_severity,\n CASE WHEN next_val IS NOT NULL AND valor IS NOT NULL AND next_ts-ts<=5\n THEN GREATEST(0,LEAST(next_ts,UNIX_TIMESTAMP(LEAST(FROM_UNIXTIME(${__to}/1000.0), UTC_TIMESTAMP(3))))-GREATEST(ts,UNIX_TIMESTAMP(FROM_UNIXTIME(${__from}/1000.0)))) ELSE 0 END dt\n FROM levels\n),\ngroups_ AS (\n SELECT *,SUM(CASE WHEN severity>0 AND (COALESCE(prev_severity,0)=0 OR ts-prev_ts>5) THEN 1 ELSE 0 END)\n OVER (PARTITION BY cabine_id,tipo,fase ORDER BY ts,event_id) grp\n FROM flags\n),\nmarked AS (\n SELECT *,MIN(CASE WHEN severity>0 THEN ts END) OVER (PARTITION BY cabine_id,tipo,fase,grp) event_start\n FROM groups_\n),\nevent_groups AS (\n SELECT cabine_id,tipo,fase,grp,MIN(ts) first_ts,MAX(ts) last_ts,MAX(severity) severity,\n MAX(valor) peak,\n MIN(CASE WHEN ts-event_start>=10 OR (baseline>0 AND valor>=baseline*1.2 AND temp_recent>=70) THEN ts END) confirmed_ts,\n SUM(CASE WHEN severity=3 THEN dt ELSE 0 END) critical_seconds\n FROM marked WHERE severity>0 GROUP BY cabine_id,tipo,fase,grp\n),\nevents AS (\n SELECT * FROM event_groups WHERE confirmed_ts IS NOT NULL AND last_ts>=UNIX_TIMESTAMP(FROM_UNIXTIME(${__from}/1000.0))\n),\nlatest AS (SELECT * FROM levels WHERE rn=1 AND coletado_em>=FROM_UNIXTIME(${__from}/1000.0))\n\nSELECT MAX(cabine_id) cabine,\n MAX(CASE WHEN tipo='corrente' AND fase='A' THEN valor END) corrente_a,\n MAX(CASE WHEN tipo='corrente' AND fase='B' THEN valor END) corrente_b,\n MAX(CASE WHEN tipo='corrente' AND fase='C' THEN valor END) corrente_c,\n MAX(CASE WHEN tipo='temperatura' AND fase='A' THEN valor END) temperatura_a,\n MAX(CASE WHEN tipo='temperatura' AND fase='B' THEN valor END) temperatura_b,\n MAX(CASE WHEN tipo='temperatura' AND fase='C' THEN valor END) temperatura_c,\n CASE WHEN COUNT(valor)<6 OR MAX(UNIX_TIMESTAMP(LEAST(FROM_UNIXTIME(${__to}/1000.0), UTC_TIMESTAMP(3)))-ts)>60 THEN -1 ELSE MAX(severity) END estado\nFROM latest",
+          "format": "table",
+          "editorMode": "code",
+          "rawQuery": true
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "decimals": 1,
+          "noValue": "Sem dados",
+          "color": {
+            "mode": "fixed",
+            "fixedColor": "#20234F"
+          },
+          "mappings": []
+        },
+        "overrides": [
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "estado"
+            },
+            "properties": [
+              {
+                "id": "color",
+                "value": {
+                  "mode": "thresholds"
+                }
+              },
+              {
+                "id": "thresholds",
+                "value": {
+                  "mode": "absolute",
+                  "steps": [
+                    {
+                      "value": null,
+                      "color": "green"
+                    },
+                    {
+                      "value": 1,
+                      "color": "yellow"
+                    },
+                    {
+                      "value": 2,
+                      "color": "orange"
+                    },
+                    {
+                      "value": 3,
+                      "color": "red"
+                    }
+                  ]
+                }
+              },
+              {
+                "id": "mappings",
+                "value": [
+                  {
+                    "type": "value",
+                    "options": {
+                      "-1": {
+                        "text": "SEM DADOS RECENTES",
+                        "color": "gray"
+                      },
+                      "0": {
+                        "text": "NORMAL",
+                        "color": "green"
+                      },
+                      "1": {
+                        "text": "ATENÇÃO",
+                        "color": "yellow"
+                      },
+                      "2": {
+                        "text": "MODERADO",
+                        "color": "orange"
+                      },
+                      "3": {
+                        "text": "CRÍTICO",
+                        "color": "red"
+                      }
+                    }
+                  }
+                ]
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "corrente_a"
+            },
+            "properties": [
+              {
+                "id": "unit",
+                "value": "amp"
+              },
+              {
+                "id": "color",
+                "value": {
+                  "mode": "fixed",
+                  "fixedColor": "#FFFFFF"
+                }
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "temperatura_a"
+            },
+            "properties": [
+              {
+                "id": "unit",
+                "value": "celsius"
+              },
+              {
+                "id": "color",
+                "value": {
+                  "mode": "fixed",
+                  "fixedColor": "#FFFFFF"
+                }
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "corrente_b"
+            },
+            "properties": [
+              {
+                "id": "unit",
+                "value": "amp"
+              },
+              {
+                "id": "color",
+                "value": {
+                  "mode": "fixed",
+                  "fixedColor": "#FFFFFF"
+                }
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "temperatura_b"
+            },
+            "properties": [
+              {
+                "id": "unit",
+                "value": "celsius"
+              },
+              {
+                "id": "color",
+                "value": {
+                  "mode": "fixed",
+                  "fixedColor": "#FFFFFF"
+                }
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "corrente_c"
+            },
+            "properties": [
+              {
+                "id": "unit",
+                "value": "amp"
+              },
+              {
+                "id": "color",
+                "value": {
+                  "mode": "fixed",
+                  "fixedColor": "#FFFFFF"
+                }
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "temperatura_c"
+            },
+            "properties": [
+              {
+                "id": "unit",
+                "value": "celsius"
+              },
+              {
+                "id": "color",
+                "value": {
+                  "mode": "fixed",
+                  "fixedColor": "#FFFFFF"
+                }
+              }
+            ]
+          }
+        ]
+      },
+      "options": {
+        "inlineEditing": false,
+        "panZoom": false,
+        "zoomToContent": true,
+        "showAdvancedTypes": false,
+        "tooltip": {
+          "mode": "single",
+          "disableForOneClick": true
+        },
+        "root": {
+          "name": "Eletrometry",
+          "type": "frame",
+          "placement": {
+            "left": 0,
+            "top": 0,
+            "width": 282,
+            "height": 243
+          },
+          "background": {
+            "color": {
+              "fixed": "#20234F"
+            }
+          },
+          "elements": [
+            {
+              "name": "Cabine 001-16-8",
+              "type": "text",
+              "placement": {
+                "left": 16,
+                "top": 8,
+                "width": 232,
+                "height": 35
+              },
+              "constraint": {
+                "horizontal": "scale",
+                "vertical": "scale"
+              },
+              "background": {
+                "color": {
+                  "fixed": "transparent"
+                }
+              },
+              "border": {
+                "radius": 8,
+                "width": 0
+              },
+              "config": {
+                "text": {
+                  "mode": "fixed",
+                  "fixed": "Cabine 001"
+                },
+                "align": "left",
+                "valign": "middle",
+                "size": 23,
+                "color": {
+                  "fixed": "#FFFFFF"
+                }
+              },
+              "links": [
+                {
+                  "title": "Abrir cabine",
+                  "url": "/d/eletrometry-cabines?var-cabine=cabine-001&${__url_time_range}&theme=light",
+                  "targetBlank": false,
+                  "oneClick": true
+                }
+              ]
+            },
+            {
+              "name": "estado-16-49",
+              "type": "metric-value",
+              "placement": {
+                "left": 16,
+                "top": 49,
+                "width": 232,
+                "height": 25
+              },
+              "constraint": {
+                "horizontal": "scale",
+                "vertical": "scale"
+              },
+              "background": {
+                "color": {
+                  "fixed": "transparent"
+                }
+              },
+              "border": {
+                "radius": 8,
+                "width": 0
+              },
+              "config": {
+                "text": {
+                  "mode": "field",
+                  "field": "estado",
+                  "fixed": ""
+                },
+                "align": "left",
+                "valign": "middle",
+                "size": 14,
+                "color": {
+                  "field": "estado",
+                  "fixed": "#20234F"
+                }
+              },
+              "links": [
+                {
+                  "title": "Abrir cabine",
+                  "url": "/d/eletrometry-cabines?var-cabine=cabine-001&${__url_time_range}&theme=light",
+                  "targetBlank": false,
+                  "oneClick": true
+                }
+              ]
+            },
+            {
+              "name": "Fase 1-16-94",
+              "type": "text",
+              "placement": {
+                "left": 16,
+                "top": 94,
+                "width": 64,
+                "height": 30
+              },
+              "constraint": {
+                "horizontal": "scale",
+                "vertical": "scale"
+              },
+              "background": {
+                "color": {
+                  "fixed": "transparent"
+                }
+              },
+              "border": {
+                "radius": 8,
+                "width": 0
+              },
+              "config": {
+                "text": {
+                  "mode": "fixed",
+                  "fixed": "Fase 1"
+                },
+                "align": "left",
+                "valign": "middle",
+                "size": 14,
+                "color": {
+                  "fixed": "#FFFFFF"
+                }
+              },
+              "links": [
+                {
+                  "title": "Abrir cabine",
+                  "url": "/d/eletrometry-cabines?var-cabine=cabine-001&${__url_time_range}&theme=light",
+                  "targetBlank": false,
+                  "oneClick": true
+                }
+              ]
+            },
+            {
+              "name": "corrente_a-84-94",
+              "type": "metric-value",
+              "placement": {
+                "left": 84,
+                "top": 94,
+                "width": 88,
+                "height": 30
+              },
+              "constraint": {
+                "horizontal": "scale",
+                "vertical": "scale"
+              },
+              "background": {
+                "color": {
+                  "fixed": "transparent"
+                }
+              },
+              "border": {
+                "radius": 8,
+                "width": 0
+              },
+              "config": {
+                "text": {
+                  "mode": "field",
+                  "field": "corrente_a",
+                  "fixed": ""
+                },
+                "align": "left",
+                "valign": "middle",
+                "size": 17,
+                "color": {
+                  "field": "corrente_a",
+                  "fixed": "#FFFFFF"
+                }
+              },
+              "links": [
+                {
+                  "title": "Abrir cabine",
+                  "url": "/d/eletrometry-cabines?var-cabine=cabine-001&${__url_time_range}&theme=light",
+                  "targetBlank": false,
+                  "oneClick": true
+                }
+              ]
+            },
+            {
+              "name": "temperatura_a-176-94",
+              "type": "metric-value",
+              "placement": {
+                "left": 176,
+                "top": 94,
+                "width": 91,
+                "height": 30
+              },
+              "constraint": {
+                "horizontal": "scale",
+                "vertical": "scale"
+              },
+              "background": {
+                "color": {
+                  "fixed": "transparent"
+                }
+              },
+              "border": {
+                "radius": 8,
+                "width": 0
+              },
+              "config": {
+                "text": {
+                  "mode": "field",
+                  "field": "temperatura_a",
+                  "fixed": ""
+                },
+                "align": "left",
+                "valign": "middle",
+                "size": 17,
+                "color": {
+                  "field": "temperatura_a",
+                  "fixed": "#FFFFFF"
+                }
+              },
+              "links": [
+                {
+                  "title": "Abrir cabine",
+                  "url": "/d/eletrometry-cabines?var-cabine=cabine-001&${__url_time_range}&theme=light",
+                  "targetBlank": false,
+                  "oneClick": true
+                }
+              ]
+            },
+            {
+              "name": "Fase 2-16-139",
+              "type": "text",
+              "placement": {
+                "left": 16,
+                "top": 139,
+                "width": 64,
+                "height": 30
+              },
+              "constraint": {
+                "horizontal": "scale",
+                "vertical": "scale"
+              },
+              "background": {
+                "color": {
+                  "fixed": "transparent"
+                }
+              },
+              "border": {
+                "radius": 8,
+                "width": 0
+              },
+              "config": {
+                "text": {
+                  "mode": "fixed",
+                  "fixed": "Fase 2"
+                },
+                "align": "left",
+                "valign": "middle",
+                "size": 14,
+                "color": {
+                  "fixed": "#FFFFFF"
+                }
+              },
+              "links": [
+                {
+                  "title": "Abrir cabine",
+                  "url": "/d/eletrometry-cabines?var-cabine=cabine-001&${__url_time_range}&theme=light",
+                  "targetBlank": false,
+                  "oneClick": true
+                }
+              ]
+            },
+            {
+              "name": "corrente_b-84-139",
+              "type": "metric-value",
+              "placement": {
+                "left": 84,
+                "top": 139,
+                "width": 88,
+                "height": 30
+              },
+              "constraint": {
+                "horizontal": "scale",
+                "vertical": "scale"
+              },
+              "background": {
+                "color": {
+                  "fixed": "transparent"
+                }
+              },
+              "border": {
+                "radius": 8,
+                "width": 0
+              },
+              "config": {
+                "text": {
+                  "mode": "field",
+                  "field": "corrente_b",
+                  "fixed": ""
+                },
+                "align": "left",
+                "valign": "middle",
+                "size": 17,
+                "color": {
+                  "field": "corrente_b",
+                  "fixed": "#FFFFFF"
+                }
+              },
+              "links": [
+                {
+                  "title": "Abrir cabine",
+                  "url": "/d/eletrometry-cabines?var-cabine=cabine-001&${__url_time_range}&theme=light",
+                  "targetBlank": false,
+                  "oneClick": true
+                }
+              ]
+            },
+            {
+              "name": "temperatura_b-176-139",
+              "type": "metric-value",
+              "placement": {
+                "left": 176,
+                "top": 139,
+                "width": 91,
+                "height": 30
+              },
+              "constraint": {
+                "horizontal": "scale",
+                "vertical": "scale"
+              },
+              "background": {
+                "color": {
+                  "fixed": "transparent"
+                }
+              },
+              "border": {
+                "radius": 8,
+                "width": 0
+              },
+              "config": {
+                "text": {
+                  "mode": "field",
+                  "field": "temperatura_b",
+                  "fixed": ""
+                },
+                "align": "left",
+                "valign": "middle",
+                "size": 17,
+                "color": {
+                  "field": "temperatura_b",
+                  "fixed": "#FFFFFF"
+                }
+              },
+              "links": [
+                {
+                  "title": "Abrir cabine",
+                  "url": "/d/eletrometry-cabines?var-cabine=cabine-001&${__url_time_range}&theme=light",
+                  "targetBlank": false,
+                  "oneClick": true
+                }
+              ]
+            },
+            {
+              "name": "Fase 3-16-184",
+              "type": "text",
+              "placement": {
+                "left": 16,
+                "top": 184,
+                "width": 64,
+                "height": 30
+              },
+              "constraint": {
+                "horizontal": "scale",
+                "vertical": "scale"
+              },
+              "background": {
+                "color": {
+                  "fixed": "transparent"
+                }
+              },
+              "border": {
+                "radius": 8,
+                "width": 0
+              },
+              "config": {
+                "text": {
+                  "mode": "fixed",
+                  "fixed": "Fase 3"
+                },
+                "align": "left",
+                "valign": "middle",
+                "size": 14,
+                "color": {
+                  "fixed": "#FFFFFF"
+                }
+              },
+              "links": [
+                {
+                  "title": "Abrir cabine",
+                  "url": "/d/eletrometry-cabines?var-cabine=cabine-001&${__url_time_range}&theme=light",
+                  "targetBlank": false,
+                  "oneClick": true
+                }
+              ]
+            },
+            {
+              "name": "corrente_c-84-184",
+              "type": "metric-value",
+              "placement": {
+                "left": 84,
+                "top": 184,
+                "width": 88,
+                "height": 30
+              },
+              "constraint": {
+                "horizontal": "scale",
+                "vertical": "scale"
+              },
+              "background": {
+                "color": {
+                  "fixed": "transparent"
+                }
+              },
+              "border": {
+                "radius": 8,
+                "width": 0
+              },
+              "config": {
+                "text": {
+                  "mode": "field",
+                  "field": "corrente_c",
+                  "fixed": ""
+                },
+                "align": "left",
+                "valign": "middle",
+                "size": 17,
+                "color": {
+                  "field": "corrente_c",
+                  "fixed": "#FFFFFF"
+                }
+              },
+              "links": [
+                {
+                  "title": "Abrir cabine",
+                  "url": "/d/eletrometry-cabines?var-cabine=cabine-001&${__url_time_range}&theme=light",
+                  "targetBlank": false,
+                  "oneClick": true
+                }
+              ]
+            },
+            {
+              "name": "temperatura_c-176-184",
+              "type": "metric-value",
+              "placement": {
+                "left": 176,
+                "top": 184,
+                "width": 91,
+                "height": 30
+              },
+              "constraint": {
+                "horizontal": "scale",
+                "vertical": "scale"
+              },
+              "background": {
+                "color": {
+                  "fixed": "transparent"
+                }
+              },
+              "border": {
+                "radius": 8,
+                "width": 0
+              },
+              "config": {
+                "text": {
+                  "mode": "field",
+                  "field": "temperatura_c",
+                  "fixed": ""
+                },
+                "align": "left",
+                "valign": "middle",
+                "size": 17,
+                "color": {
+                  "field": "temperatura_c",
+                  "fixed": "#FFFFFF"
+                }
+              },
+              "links": [
+                {
+                  "title": "Abrir cabine",
+                  "url": "/d/eletrometry-cabines?var-cabine=cabine-001&${__url_time_range}&theme=light",
+                  "targetBlank": false,
+                  "oneClick": true
+                }
+              ]
+            }
+          ]
+        }
+      },
+      "pluginVersion": "12.2.0",
+      "links": [
+        {
+          "title": "Abrir dashboard da cabine",
+          "url": "/d/eletrometry-cabines?var-cabine=cabine-001&${__url_time_range}&theme=light",
+          "targetBlank": false
+        }
+      ]
+    },
+    {
+      "id": 21,
+      "title": "cabine-002",
+      "type": "canvas",
+      "gridPos": {
+        "x": 4,
+        "y": 8,
+        "w": 4,
+        "h": 8
+      },
+      "description": "Clique no título ou nos valores para abrir a cabine, mantendo o período. R=A; S=B; T=C. Cinza: dados ausentes, inválidos ou antigos.",
+      "datasource": {
+        "type": "mysql",
+        "uid": "eletrometry-mysql"
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "mysql",
+            "uid": "eletrometry-mysql"
+          },
+          "rawSql": "WITH\nraw AS (SELECT * FROM (SELECT * FROM leituras WHERE cabine_id='cabine-002' AND coletado_em >= FROM_UNIXTIME(${__from}/1000.0) - INTERVAL 60 SECOND AND coletado_em <= LEAST(FROM_UNIXTIME(${__to}/1000.0), UTC_TIMESTAMP(3)) AND tipo='corrente' ORDER BY coletado_em DESC,event_id DESC LIMIT 1) t_corrente UNION ALL SELECT * FROM (SELECT * FROM leituras WHERE cabine_id='cabine-002' AND coletado_em >= FROM_UNIXTIME(${__from}/1000.0) - INTERVAL 60 SECOND AND coletado_em <= LEAST(FROM_UNIXTIME(${__to}/1000.0), UTC_TIMESTAMP(3)) AND tipo='temperatura' ORDER BY coletado_em DESC,event_id DESC LIMIT 1) t_temperatura),\nphases AS (SELECT event_id,cabine_id,tipo,coletado_em,recebido_em,'A' fase,CASE WHEN qualidade_a='ok' THEN fase_a END valor FROM raw UNION ALL SELECT event_id,cabine_id,tipo,coletado_em,recebido_em,'B' fase,CASE WHEN qualidade_b='ok' THEN fase_b END valor FROM raw UNION ALL SELECT event_id,cabine_id,tipo,coletado_em,recebido_em,'C' fase,CASE WHEN qualidade_c='ok' THEN fase_c END valor FROM raw),\nlimits AS (\n SELECT *,UNIX_TIMESTAMP(coletado_em) ts,\n CASE WHEN tipo='temperatura' THEN 60 ELSE (CASE cabine_id WHEN 'cabine-001' THEN 600.0 WHEN 'cabine-002' THEN 600.0 WHEN 'cabine-003' THEN 600.0 ELSE 600.0 END)*0.66 END ideal,\n CASE WHEN tipo='temperatura' THEN 70 ELSE (CASE cabine_id WHEN 'cabine-001' THEN 600.0 WHEN 'cabine-002' THEN 600.0 WHEN 'cabine-003' THEN 600.0 ELSE 600.0 END)*0.759 END lim1,\n CASE WHEN tipo='temperatura' THEN 80 ELSE (CASE cabine_id WHEN 'cabine-001' THEN 600.0 WHEN 'cabine-002' THEN 600.0 WHEN 'cabine-003' THEN 600.0 ELSE 600.0 END)*0.8580000000000001 END lim2,\n CASE WHEN tipo='temperatura' THEN 90 ELSE (CASE cabine_id WHEN 'cabine-001' THEN 600.0 WHEN 'cabine-002' THEN 600.0 WHEN 'cabine-003' THEN 600.0 ELSE 600.0 END)*0.957 END lim3\n FROM phases\n),\nlevels AS (\n SELECT *,CASE WHEN valor IS NULL THEN NULL WHEN valor>=lim3 THEN 3 WHEN valor>=lim2 THEN 2 WHEN valor>=lim1 THEN 1 ELSE 0 END severity,\n AVG(valor) OVER (PARTITION BY cabine_id,tipo,fase ORDER BY ts RANGE BETWEEN 10 PRECEDING AND 1 PRECEDING) baseline,\n MAX(CASE WHEN tipo='temperatura' THEN valor END) OVER (PARTITION BY cabine_id,fase ORDER BY ts RANGE BETWEEN 5 PRECEDING AND CURRENT ROW) temp_recent,\n LAG(ts) OVER w prev_ts,LEAD(ts) OVER w next_ts,\n LEAD(valor) OVER w next_val,\n ROW_NUMBER() OVER (PARTITION BY cabine_id,tipo,fase ORDER BY ts DESC,event_id DESC) rn\n FROM limits WINDOW w AS (PARTITION BY cabine_id,tipo,fase ORDER BY ts,event_id)\n),\nflags AS (\n SELECT *,LAG(severity) OVER (PARTITION BY cabine_id,tipo,fase ORDER BY ts,event_id) prev_severity,\n CASE WHEN next_val IS NOT NULL AND valor IS NOT NULL AND next_ts-ts<=5\n THEN GREATEST(0,LEAST(next_ts,UNIX_TIMESTAMP(LEAST(FROM_UNIXTIME(${__to}/1000.0), UTC_TIMESTAMP(3))))-GREATEST(ts,UNIX_TIMESTAMP(FROM_UNIXTIME(${__from}/1000.0)))) ELSE 0 END dt\n FROM levels\n),\ngroups_ AS (\n SELECT *,SUM(CASE WHEN severity>0 AND (COALESCE(prev_severity,0)=0 OR ts-prev_ts>5) THEN 1 ELSE 0 END)\n OVER (PARTITION BY cabine_id,tipo,fase ORDER BY ts,event_id) grp\n FROM flags\n),\nmarked AS (\n SELECT *,MIN(CASE WHEN severity>0 THEN ts END) OVER (PARTITION BY cabine_id,tipo,fase,grp) event_start\n FROM groups_\n),\nevent_groups AS (\n SELECT cabine_id,tipo,fase,grp,MIN(ts) first_ts,MAX(ts) last_ts,MAX(severity) severity,\n MAX(valor) peak,\n MIN(CASE WHEN ts-event_start>=10 OR (baseline>0 AND valor>=baseline*1.2 AND temp_recent>=70) THEN ts END) confirmed_ts,\n SUM(CASE WHEN severity=3 THEN dt ELSE 0 END) critical_seconds\n FROM marked WHERE severity>0 GROUP BY cabine_id,tipo,fase,grp\n),\nevents AS (\n SELECT * FROM event_groups WHERE confirmed_ts IS NOT NULL AND last_ts>=UNIX_TIMESTAMP(FROM_UNIXTIME(${__from}/1000.0))\n),\nlatest AS (SELECT * FROM levels WHERE rn=1 AND coletado_em>=FROM_UNIXTIME(${__from}/1000.0))\n\nSELECT MAX(cabine_id) cabine,\n MAX(CASE WHEN tipo='corrente' AND fase='A' THEN valor END) corrente_a,\n MAX(CASE WHEN tipo='corrente' AND fase='B' THEN valor END) corrente_b,\n MAX(CASE WHEN tipo='corrente' AND fase='C' THEN valor END) corrente_c,\n MAX(CASE WHEN tipo='temperatura' AND fase='A' THEN valor END) temperatura_a,\n MAX(CASE WHEN tipo='temperatura' AND fase='B' THEN valor END) temperatura_b,\n MAX(CASE WHEN tipo='temperatura' AND fase='C' THEN valor END) temperatura_c,\n CASE WHEN COUNT(valor)<6 OR MAX(UNIX_TIMESTAMP(LEAST(FROM_UNIXTIME(${__to}/1000.0), UTC_TIMESTAMP(3)))-ts)>60 THEN -1 ELSE MAX(severity) END estado\nFROM latest",
+          "format": "table",
+          "editorMode": "code",
+          "rawQuery": true
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "decimals": 1,
+          "noValue": "Sem dados",
+          "color": {
+            "mode": "fixed",
+            "fixedColor": "#20234F"
+          },
+          "mappings": []
+        },
+        "overrides": [
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "estado"
+            },
+            "properties": [
+              {
+                "id": "color",
+                "value": {
+                  "mode": "thresholds"
+                }
+              },
+              {
+                "id": "thresholds",
+                "value": {
+                  "mode": "absolute",
+                  "steps": [
+                    {
+                      "value": null,
+                      "color": "green"
+                    },
+                    {
+                      "value": 1,
+                      "color": "yellow"
+                    },
+                    {
+                      "value": 2,
+                      "color": "orange"
+                    },
+                    {
+                      "value": 3,
+                      "color": "red"
+                    }
+                  ]
+                }
+              },
+              {
+                "id": "mappings",
+                "value": [
+                  {
+                    "type": "value",
+                    "options": {
+                      "-1": {
+                        "text": "SEM DADOS RECENTES",
+                        "color": "gray"
+                      },
+                      "0": {
+                        "text": "NORMAL",
+                        "color": "green"
+                      },
+                      "1": {
+                        "text": "ATENÇÃO",
+                        "color": "yellow"
+                      },
+                      "2": {
+                        "text": "MODERADO",
+                        "color": "orange"
+                      },
+                      "3": {
+                        "text": "CRÍTICO",
+                        "color": "red"
+                      }
+                    }
+                  }
+                ]
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "corrente_a"
+            },
+            "properties": [
+              {
+                "id": "unit",
+                "value": "amp"
+              },
+              {
+                "id": "color",
+                "value": {
+                  "mode": "fixed",
+                  "fixedColor": "#FFFFFF"
+                }
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "temperatura_a"
+            },
+            "properties": [
+              {
+                "id": "unit",
+                "value": "celsius"
+              },
+              {
+                "id": "color",
+                "value": {
+                  "mode": "fixed",
+                  "fixedColor": "#FFFFFF"
+                }
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "corrente_b"
+            },
+            "properties": [
+              {
+                "id": "unit",
+                "value": "amp"
+              },
+              {
+                "id": "color",
+                "value": {
+                  "mode": "fixed",
+                  "fixedColor": "#FFFFFF"
+                }
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "temperatura_b"
+            },
+            "properties": [
+              {
+                "id": "unit",
+                "value": "celsius"
+              },
+              {
+                "id": "color",
+                "value": {
+                  "mode": "fixed",
+                  "fixedColor": "#FFFFFF"
+                }
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "corrente_c"
+            },
+            "properties": [
+              {
+                "id": "unit",
+                "value": "amp"
+              },
+              {
+                "id": "color",
+                "value": {
+                  "mode": "fixed",
+                  "fixedColor": "#FFFFFF"
+                }
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "temperatura_c"
+            },
+            "properties": [
+              {
+                "id": "unit",
+                "value": "celsius"
+              },
+              {
+                "id": "color",
+                "value": {
+                  "mode": "fixed",
+                  "fixedColor": "#FFFFFF"
+                }
+              }
+            ]
+          }
+        ]
+      },
+      "options": {
+        "inlineEditing": false,
+        "panZoom": false,
+        "zoomToContent": true,
+        "showAdvancedTypes": false,
+        "tooltip": {
+          "mode": "single",
+          "disableForOneClick": true
+        },
+        "root": {
+          "name": "Eletrometry",
+          "type": "frame",
+          "placement": {
+            "left": 0,
+            "top": 0,
+            "width": 282,
+            "height": 243
+          },
+          "background": {
+            "color": {
+              "fixed": "#20234F"
+            }
+          },
+          "elements": [
+            {
+              "name": "Cabine 002-16-8",
+              "type": "text",
+              "placement": {
+                "left": 16,
+                "top": 8,
+                "width": 232,
+                "height": 35
+              },
+              "constraint": {
+                "horizontal": "scale",
+                "vertical": "scale"
+              },
+              "background": {
+                "color": {
+                  "fixed": "transparent"
+                }
+              },
+              "border": {
+                "radius": 8,
+                "width": 0
+              },
+              "config": {
+                "text": {
+                  "mode": "fixed",
+                  "fixed": "Cabine 002"
+                },
+                "align": "left",
+                "valign": "middle",
+                "size": 23,
+                "color": {
+                  "fixed": "#FFFFFF"
+                }
+              },
+              "links": [
+                {
+                  "title": "Abrir cabine",
+                  "url": "/d/eletrometry-cabines?var-cabine=cabine-002&${__url_time_range}&theme=light",
+                  "targetBlank": false,
+                  "oneClick": true
+                }
+              ]
+            },
+            {
+              "name": "estado-16-49",
+              "type": "metric-value",
+              "placement": {
+                "left": 16,
+                "top": 49,
+                "width": 232,
+                "height": 25
+              },
+              "constraint": {
+                "horizontal": "scale",
+                "vertical": "scale"
+              },
+              "background": {
+                "color": {
+                  "fixed": "transparent"
+                }
+              },
+              "border": {
+                "radius": 8,
+                "width": 0
+              },
+              "config": {
+                "text": {
+                  "mode": "field",
+                  "field": "estado",
+                  "fixed": ""
+                },
+                "align": "left",
+                "valign": "middle",
+                "size": 14,
+                "color": {
+                  "field": "estado",
+                  "fixed": "#20234F"
+                }
+              },
+              "links": [
+                {
+                  "title": "Abrir cabine",
+                  "url": "/d/eletrometry-cabines?var-cabine=cabine-002&${__url_time_range}&theme=light",
+                  "targetBlank": false,
+                  "oneClick": true
+                }
+              ]
+            },
+            {
+              "name": "Fase 1-16-94",
+              "type": "text",
+              "placement": {
+                "left": 16,
+                "top": 94,
+                "width": 64,
+                "height": 30
+              },
+              "constraint": {
+                "horizontal": "scale",
+                "vertical": "scale"
+              },
+              "background": {
+                "color": {
+                  "fixed": "transparent"
+                }
+              },
+              "border": {
+                "radius": 8,
+                "width": 0
+              },
+              "config": {
+                "text": {
+                  "mode": "fixed",
+                  "fixed": "Fase 1"
+                },
+                "align": "left",
+                "valign": "middle",
+                "size": 14,
+                "color": {
+                  "fixed": "#FFFFFF"
+                }
+              },
+              "links": [
+                {
+                  "title": "Abrir cabine",
+                  "url": "/d/eletrometry-cabines?var-cabine=cabine-002&${__url_time_range}&theme=light",
+                  "targetBlank": false,
+                  "oneClick": true
+                }
+              ]
+            },
+            {
+              "name": "corrente_a-84-94",
+              "type": "metric-value",
+              "placement": {
+                "left": 84,
+                "top": 94,
+                "width": 88,
+                "height": 30
+              },
+              "constraint": {
+                "horizontal": "scale",
+                "vertical": "scale"
+              },
+              "background": {
+                "color": {
+                  "fixed": "transparent"
+                }
+              },
+              "border": {
+                "radius": 8,
+                "width": 0
+              },
+              "config": {
+                "text": {
+                  "mode": "field",
+                  "field": "corrente_a",
+                  "fixed": ""
+                },
+                "align": "left",
+                "valign": "middle",
+                "size": 17,
+                "color": {
+                  "field": "corrente_a",
+                  "fixed": "#FFFFFF"
+                }
+              },
+              "links": [
+                {
+                  "title": "Abrir cabine",
+                  "url": "/d/eletrometry-cabines?var-cabine=cabine-002&${__url_time_range}&theme=light",
+                  "targetBlank": false,
+                  "oneClick": true
+                }
+              ]
+            },
+            {
+              "name": "temperatura_a-176-94",
+              "type": "metric-value",
+              "placement": {
+                "left": 176,
+                "top": 94,
+                "width": 91,
+                "height": 30
+              },
+              "constraint": {
+                "horizontal": "scale",
+                "vertical": "scale"
+              },
+              "background": {
+                "color": {
+                  "fixed": "transparent"
+                }
+              },
+              "border": {
+                "radius": 8,
+                "width": 0
+              },
+              "config": {
+                "text": {
+                  "mode": "field",
+                  "field": "temperatura_a",
+                  "fixed": ""
+                },
+                "align": "left",
+                "valign": "middle",
+                "size": 17,
+                "color": {
+                  "field": "temperatura_a",
+                  "fixed": "#FFFFFF"
+                }
+              },
+              "links": [
+                {
+                  "title": "Abrir cabine",
+                  "url": "/d/eletrometry-cabines?var-cabine=cabine-002&${__url_time_range}&theme=light",
+                  "targetBlank": false,
+                  "oneClick": true
+                }
+              ]
+            },
+            {
+              "name": "Fase 2-16-139",
+              "type": "text",
+              "placement": {
+                "left": 16,
+                "top": 139,
+                "width": 64,
+                "height": 30
+              },
+              "constraint": {
+                "horizontal": "scale",
+                "vertical": "scale"
+              },
+              "background": {
+                "color": {
+                  "fixed": "transparent"
+                }
+              },
+              "border": {
+                "radius": 8,
+                "width": 0
+              },
+              "config": {
+                "text": {
+                  "mode": "fixed",
+                  "fixed": "Fase 2"
+                },
+                "align": "left",
+                "valign": "middle",
+                "size": 14,
+                "color": {
+                  "fixed": "#FFFFFF"
+                }
+              },
+              "links": [
+                {
+                  "title": "Abrir cabine",
+                  "url": "/d/eletrometry-cabines?var-cabine=cabine-002&${__url_time_range}&theme=light",
+                  "targetBlank": false,
+                  "oneClick": true
+                }
+              ]
+            },
+            {
+              "name": "corrente_b-84-139",
+              "type": "metric-value",
+              "placement": {
+                "left": 84,
+                "top": 139,
+                "width": 88,
+                "height": 30
+              },
+              "constraint": {
+                "horizontal": "scale",
+                "vertical": "scale"
+              },
+              "background": {
+                "color": {
+                  "fixed": "transparent"
+                }
+              },
+              "border": {
+                "radius": 8,
+                "width": 0
+              },
+              "config": {
+                "text": {
+                  "mode": "field",
+                  "field": "corrente_b",
+                  "fixed": ""
+                },
+                "align": "left",
+                "valign": "middle",
+                "size": 17,
+                "color": {
+                  "field": "corrente_b",
+                  "fixed": "#FFFFFF"
+                }
+              },
+              "links": [
+                {
+                  "title": "Abrir cabine",
+                  "url": "/d/eletrometry-cabines?var-cabine=cabine-002&${__url_time_range}&theme=light",
+                  "targetBlank": false,
+                  "oneClick": true
+                }
+              ]
+            },
+            {
+              "name": "temperatura_b-176-139",
+              "type": "metric-value",
+              "placement": {
+                "left": 176,
+                "top": 139,
+                "width": 91,
+                "height": 30
+              },
+              "constraint": {
+                "horizontal": "scale",
+                "vertical": "scale"
+              },
+              "background": {
+                "color": {
+                  "fixed": "transparent"
+                }
+              },
+              "border": {
+                "radius": 8,
+                "width": 0
+              },
+              "config": {
+                "text": {
+                  "mode": "field",
+                  "field": "temperatura_b",
+                  "fixed": ""
+                },
+                "align": "left",
+                "valign": "middle",
+                "size": 17,
+                "color": {
+                  "field": "temperatura_b",
+                  "fixed": "#FFFFFF"
+                }
+              },
+              "links": [
+                {
+                  "title": "Abrir cabine",
+                  "url": "/d/eletrometry-cabines?var-cabine=cabine-002&${__url_time_range}&theme=light",
+                  "targetBlank": false,
+                  "oneClick": true
+                }
+              ]
+            },
+            {
+              "name": "Fase 3-16-184",
+              "type": "text",
+              "placement": {
+                "left": 16,
+                "top": 184,
+                "width": 64,
+                "height": 30
+              },
+              "constraint": {
+                "horizontal": "scale",
+                "vertical": "scale"
+              },
+              "background": {
+                "color": {
+                  "fixed": "transparent"
+                }
+              },
+              "border": {
+                "radius": 8,
+                "width": 0
+              },
+              "config": {
+                "text": {
+                  "mode": "fixed",
+                  "fixed": "Fase 3"
+                },
+                "align": "left",
+                "valign": "middle",
+                "size": 14,
+                "color": {
+                  "fixed": "#FFFFFF"
+                }
+              },
+              "links": [
+                {
+                  "title": "Abrir cabine",
+                  "url": "/d/eletrometry-cabines?var-cabine=cabine-002&${__url_time_range}&theme=light",
+                  "targetBlank": false,
+                  "oneClick": true
+                }
+              ]
+            },
+            {
+              "name": "corrente_c-84-184",
+              "type": "metric-value",
+              "placement": {
+                "left": 84,
+                "top": 184,
+                "width": 88,
+                "height": 30
+              },
+              "constraint": {
+                "horizontal": "scale",
+                "vertical": "scale"
+              },
+              "background": {
+                "color": {
+                  "fixed": "transparent"
+                }
+              },
+              "border": {
+                "radius": 8,
+                "width": 0
+              },
+              "config": {
+                "text": {
+                  "mode": "field",
+                  "field": "corrente_c",
+                  "fixed": ""
+                },
+                "align": "left",
+                "valign": "middle",
+                "size": 17,
+                "color": {
+                  "field": "corrente_c",
+                  "fixed": "#FFFFFF"
+                }
+              },
+              "links": [
+                {
+                  "title": "Abrir cabine",
+                  "url": "/d/eletrometry-cabines?var-cabine=cabine-002&${__url_time_range}&theme=light",
+                  "targetBlank": false,
+                  "oneClick": true
+                }
+              ]
+            },
+            {
+              "name": "temperatura_c-176-184",
+              "type": "metric-value",
+              "placement": {
+                "left": 176,
+                "top": 184,
+                "width": 91,
+                "height": 30
+              },
+              "constraint": {
+                "horizontal": "scale",
+                "vertical": "scale"
+              },
+              "background": {
+                "color": {
+                  "fixed": "transparent"
+                }
+              },
+              "border": {
+                "radius": 8,
+                "width": 0
+              },
+              "config": {
+                "text": {
+                  "mode": "field",
+                  "field": "temperatura_c",
+                  "fixed": ""
+                },
+                "align": "left",
+                "valign": "middle",
+                "size": 17,
+                "color": {
+                  "field": "temperatura_c",
+                  "fixed": "#FFFFFF"
+                }
+              },
+              "links": [
+                {
+                  "title": "Abrir cabine",
+                  "url": "/d/eletrometry-cabines?var-cabine=cabine-002&${__url_time_range}&theme=light",
+                  "targetBlank": false,
+                  "oneClick": true
+                }
+              ]
+            }
+          ]
+        }
+      },
+      "pluginVersion": "12.2.0",
+      "links": [
+        {
+          "title": "Abrir dashboard da cabine",
+          "url": "/d/eletrometry-cabines?var-cabine=cabine-002&${__url_time_range}&theme=light",
+          "targetBlank": false
+        }
+      ]
+    },
+    {
+      "id": 22,
+      "title": "cabine-003",
+      "type": "canvas",
+      "gridPos": {
+        "x": 8,
+        "y": 8,
+        "w": 4,
+        "h": 8
+      },
+      "description": "Clique no título ou nos valores para abrir a cabine, mantendo o período. R=A; S=B; T=C. Cinza: dados ausentes, inválidos ou antigos.",
+      "datasource": {
+        "type": "mysql",
+        "uid": "eletrometry-mysql"
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "mysql",
+            "uid": "eletrometry-mysql"
+          },
+          "rawSql": "WITH\nraw AS (SELECT * FROM (SELECT * FROM leituras WHERE cabine_id='cabine-003' AND coletado_em >= FROM_UNIXTIME(${__from}/1000.0) - INTERVAL 60 SECOND AND coletado_em <= LEAST(FROM_UNIXTIME(${__to}/1000.0), UTC_TIMESTAMP(3)) AND tipo='corrente' ORDER BY coletado_em DESC,event_id DESC LIMIT 1) t_corrente UNION ALL SELECT * FROM (SELECT * FROM leituras WHERE cabine_id='cabine-003' AND coletado_em >= FROM_UNIXTIME(${__from}/1000.0) - INTERVAL 60 SECOND AND coletado_em <= LEAST(FROM_UNIXTIME(${__to}/1000.0), UTC_TIMESTAMP(3)) AND tipo='temperatura' ORDER BY coletado_em DESC,event_id DESC LIMIT 1) t_temperatura),\nphases AS (SELECT event_id,cabine_id,tipo,coletado_em,recebido_em,'A' fase,CASE WHEN qualidade_a='ok' THEN fase_a END valor FROM raw UNION ALL SELECT event_id,cabine_id,tipo,coletado_em,recebido_em,'B' fase,CASE WHEN qualidade_b='ok' THEN fase_b END valor FROM raw UNION ALL SELECT event_id,cabine_id,tipo,coletado_em,recebido_em,'C' fase,CASE WHEN qualidade_c='ok' THEN fase_c END valor FROM raw),\nlimits AS (\n SELECT *,UNIX_TIMESTAMP(coletado_em) ts,\n CASE WHEN tipo='temperatura' THEN 60 ELSE (CASE cabine_id WHEN 'cabine-001' THEN 600.0 WHEN 'cabine-002' THEN 600.0 WHEN 'cabine-003' THEN 600.0 ELSE 600.0 END)*0.66 END ideal,\n CASE WHEN tipo='temperatura' THEN 70 ELSE (CASE cabine_id WHEN 'cabine-001' THEN 600.0 WHEN 'cabine-002' THEN 600.0 WHEN 'cabine-003' THEN 600.0 ELSE 600.0 END)*0.759 END lim1,\n CASE WHEN tipo='temperatura' THEN 80 ELSE (CASE cabine_id WHEN 'cabine-001' THEN 600.0 WHEN 'cabine-002' THEN 600.0 WHEN 'cabine-003' THEN 600.0 ELSE 600.0 END)*0.8580000000000001 END lim2,\n CASE WHEN tipo='temperatura' THEN 90 ELSE (CASE cabine_id WHEN 'cabine-001' THEN 600.0 WHEN 'cabine-002' THEN 600.0 WHEN 'cabine-003' THEN 600.0 ELSE 600.0 END)*0.957 END lim3\n FROM phases\n),\nlevels AS (\n SELECT *,CASE WHEN valor IS NULL THEN NULL WHEN valor>=lim3 THEN 3 WHEN valor>=lim2 THEN 2 WHEN valor>=lim1 THEN 1 ELSE 0 END severity,\n AVG(valor) OVER (PARTITION BY cabine_id,tipo,fase ORDER BY ts RANGE BETWEEN 10 PRECEDING AND 1 PRECEDING) baseline,\n MAX(CASE WHEN tipo='temperatura' THEN valor END) OVER (PARTITION BY cabine_id,fase ORDER BY ts RANGE BETWEEN 5 PRECEDING AND CURRENT ROW) temp_recent,\n LAG(ts) OVER w prev_ts,LEAD(ts) OVER w next_ts,\n LEAD(valor) OVER w next_val,\n ROW_NUMBER() OVER (PARTITION BY cabine_id,tipo,fase ORDER BY ts DESC,event_id DESC) rn\n FROM limits WINDOW w AS (PARTITION BY cabine_id,tipo,fase ORDER BY ts,event_id)\n),\nflags AS (\n SELECT *,LAG(severity) OVER (PARTITION BY cabine_id,tipo,fase ORDER BY ts,event_id) prev_severity,\n CASE WHEN next_val IS NOT NULL AND valor IS NOT NULL AND next_ts-ts<=5\n THEN GREATEST(0,LEAST(next_ts,UNIX_TIMESTAMP(LEAST(FROM_UNIXTIME(${__to}/1000.0), UTC_TIMESTAMP(3))))-GREATEST(ts,UNIX_TIMESTAMP(FROM_UNIXTIME(${__from}/1000.0)))) ELSE 0 END dt\n FROM levels\n),\ngroups_ AS (\n SELECT *,SUM(CASE WHEN severity>0 AND (COALESCE(prev_severity,0)=0 OR ts-prev_ts>5) THEN 1 ELSE 0 END)\n OVER (PARTITION BY cabine_id,tipo,fase ORDER BY ts,event_id) grp\n FROM flags\n),\nmarked AS (\n SELECT *,MIN(CASE WHEN severity>0 THEN ts END) OVER (PARTITION BY cabine_id,tipo,fase,grp) event_start\n FROM groups_\n),\nevent_groups AS (\n SELECT cabine_id,tipo,fase,grp,MIN(ts) first_ts,MAX(ts) last_ts,MAX(severity) severity,\n MAX(valor) peak,\n MIN(CASE WHEN ts-event_start>=10 OR (baseline>0 AND valor>=baseline*1.2 AND temp_recent>=70) THEN ts END) confirmed_ts,\n SUM(CASE WHEN severity=3 THEN dt ELSE 0 END) critical_seconds\n FROM marked WHERE severity>0 GROUP BY cabine_id,tipo,fase,grp\n),\nevents AS (\n SELECT * FROM event_groups WHERE confirmed_ts IS NOT NULL AND last_ts>=UNIX_TIMESTAMP(FROM_UNIXTIME(${__from}/1000.0))\n),\nlatest AS (SELECT * FROM levels WHERE rn=1 AND coletado_em>=FROM_UNIXTIME(${__from}/1000.0))\n\nSELECT MAX(cabine_id) cabine,\n MAX(CASE WHEN tipo='corrente' AND fase='A' THEN valor END) corrente_a,\n MAX(CASE WHEN tipo='corrente' AND fase='B' THEN valor END) corrente_b,\n MAX(CASE WHEN tipo='corrente' AND fase='C' THEN valor END) corrente_c,\n MAX(CASE WHEN tipo='temperatura' AND fase='A' THEN valor END) temperatura_a,\n MAX(CASE WHEN tipo='temperatura' AND fase='B' THEN valor END) temperatura_b,\n MAX(CASE WHEN tipo='temperatura' AND fase='C' THEN valor END) temperatura_c,\n CASE WHEN COUNT(valor)<6 OR MAX(UNIX_TIMESTAMP(LEAST(FROM_UNIXTIME(${__to}/1000.0), UTC_TIMESTAMP(3)))-ts)>60 THEN -1 ELSE MAX(severity) END estado\nFROM latest",
+          "format": "table",
+          "editorMode": "code",
+          "rawQuery": true
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "decimals": 1,
+          "noValue": "Sem dados",
+          "color": {
+            "mode": "fixed",
+            "fixedColor": "#20234F"
+          },
+          "mappings": []
+        },
+        "overrides": [
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "estado"
+            },
+            "properties": [
+              {
+                "id": "color",
+                "value": {
+                  "mode": "thresholds"
+                }
+              },
+              {
+                "id": "thresholds",
+                "value": {
+                  "mode": "absolute",
+                  "steps": [
+                    {
+                      "value": null,
+                      "color": "green"
+                    },
+                    {
+                      "value": 1,
+                      "color": "yellow"
+                    },
+                    {
+                      "value": 2,
+                      "color": "orange"
+                    },
+                    {
+                      "value": 3,
+                      "color": "red"
+                    }
+                  ]
+                }
+              },
+              {
+                "id": "mappings",
+                "value": [
+                  {
+                    "type": "value",
+                    "options": {
+                      "-1": {
+                        "text": "SEM DADOS RECENTES",
+                        "color": "gray"
+                      },
+                      "0": {
+                        "text": "NORMAL",
+                        "color": "green"
+                      },
+                      "1": {
+                        "text": "ATENÇÃO",
+                        "color": "yellow"
+                      },
+                      "2": {
+                        "text": "MODERADO",
+                        "color": "orange"
+                      },
+                      "3": {
+                        "text": "CRÍTICO",
+                        "color": "red"
+                      }
+                    }
+                  }
+                ]
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "corrente_a"
+            },
+            "properties": [
+              {
+                "id": "unit",
+                "value": "amp"
+              },
+              {
+                "id": "color",
+                "value": {
+                  "mode": "fixed",
+                  "fixedColor": "#FFFFFF"
+                }
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "temperatura_a"
+            },
+            "properties": [
+              {
+                "id": "unit",
+                "value": "celsius"
+              },
+              {
+                "id": "color",
+                "value": {
+                  "mode": "fixed",
+                  "fixedColor": "#FFFFFF"
+                }
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "corrente_b"
+            },
+            "properties": [
+              {
+                "id": "unit",
+                "value": "amp"
+              },
+              {
+                "id": "color",
+                "value": {
+                  "mode": "fixed",
+                  "fixedColor": "#FFFFFF"
+                }
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "temperatura_b"
+            },
+            "properties": [
+              {
+                "id": "unit",
+                "value": "celsius"
+              },
+              {
+                "id": "color",
+                "value": {
+                  "mode": "fixed",
+                  "fixedColor": "#FFFFFF"
+                }
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "corrente_c"
+            },
+            "properties": [
+              {
+                "id": "unit",
+                "value": "amp"
+              },
+              {
+                "id": "color",
+                "value": {
+                  "mode": "fixed",
+                  "fixedColor": "#FFFFFF"
+                }
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "temperatura_c"
+            },
+            "properties": [
+              {
+                "id": "unit",
+                "value": "celsius"
+              },
+              {
+                "id": "color",
+                "value": {
+                  "mode": "fixed",
+                  "fixedColor": "#FFFFFF"
+                }
+              }
+            ]
+          }
+        ]
+      },
+      "options": {
+        "inlineEditing": false,
+        "panZoom": false,
+        "zoomToContent": true,
+        "showAdvancedTypes": false,
+        "tooltip": {
+          "mode": "single",
+          "disableForOneClick": true
+        },
+        "root": {
+          "name": "Eletrometry",
+          "type": "frame",
+          "placement": {
+            "left": 0,
+            "top": 0,
+            "width": 282,
+            "height": 243
+          },
+          "background": {
+            "color": {
+              "fixed": "#20234F"
+            }
+          },
+          "elements": [
+            {
+              "name": "Cabine 003-16-8",
+              "type": "text",
+              "placement": {
+                "left": 16,
+                "top": 8,
+                "width": 232,
+                "height": 35
+              },
+              "constraint": {
+                "horizontal": "scale",
+                "vertical": "scale"
+              },
+              "background": {
+                "color": {
+                  "fixed": "transparent"
+                }
+              },
+              "border": {
+                "radius": 8,
+                "width": 0
+              },
+              "config": {
+                "text": {
+                  "mode": "fixed",
+                  "fixed": "Cabine 003"
+                },
+                "align": "left",
+                "valign": "middle",
+                "size": 23,
+                "color": {
+                  "fixed": "#FFFFFF"
+                }
+              },
+              "links": [
+                {
+                  "title": "Abrir cabine",
+                  "url": "/d/eletrometry-cabines?var-cabine=cabine-003&${__url_time_range}&theme=light",
+                  "targetBlank": false,
+                  "oneClick": true
+                }
+              ]
+            },
+            {
+              "name": "estado-16-49",
+              "type": "metric-value",
+              "placement": {
+                "left": 16,
+                "top": 49,
+                "width": 232,
+                "height": 25
+              },
+              "constraint": {
+                "horizontal": "scale",
+                "vertical": "scale"
+              },
+              "background": {
+                "color": {
+                  "fixed": "transparent"
+                }
+              },
+              "border": {
+                "radius": 8,
+                "width": 0
+              },
+              "config": {
+                "text": {
+                  "mode": "field",
+                  "field": "estado",
+                  "fixed": ""
+                },
+                "align": "left",
+                "valign": "middle",
+                "size": 14,
+                "color": {
+                  "field": "estado",
+                  "fixed": "#20234F"
+                }
+              },
+              "links": [
+                {
+                  "title": "Abrir cabine",
+                  "url": "/d/eletrometry-cabines?var-cabine=cabine-003&${__url_time_range}&theme=light",
+                  "targetBlank": false,
+                  "oneClick": true
+                }
+              ]
+            },
+            {
+              "name": "Fase 1-16-94",
+              "type": "text",
+              "placement": {
+                "left": 16,
+                "top": 94,
+                "width": 64,
+                "height": 30
+              },
+              "constraint": {
+                "horizontal": "scale",
+                "vertical": "scale"
+              },
+              "background": {
+                "color": {
+                  "fixed": "transparent"
+                }
+              },
+              "border": {
+                "radius": 8,
+                "width": 0
+              },
+              "config": {
+                "text": {
+                  "mode": "fixed",
+                  "fixed": "Fase 1"
+                },
+                "align": "left",
+                "valign": "middle",
+                "size": 14,
+                "color": {
+                  "fixed": "#FFFFFF"
+                }
+              },
+              "links": [
+                {
+                  "title": "Abrir cabine",
+                  "url": "/d/eletrometry-cabines?var-cabine=cabine-003&${__url_time_range}&theme=light",
+                  "targetBlank": false,
+                  "oneClick": true
+                }
+              ]
+            },
+            {
+              "name": "corrente_a-84-94",
+              "type": "metric-value",
+              "placement": {
+                "left": 84,
+                "top": 94,
+                "width": 88,
+                "height": 30
+              },
+              "constraint": {
+                "horizontal": "scale",
+                "vertical": "scale"
+              },
+              "background": {
+                "color": {
+                  "fixed": "transparent"
+                }
+              },
+              "border": {
+                "radius": 8,
+                "width": 0
+              },
+              "config": {
+                "text": {
+                  "mode": "field",
+                  "field": "corrente_a",
+                  "fixed": ""
+                },
+                "align": "left",
+                "valign": "middle",
+                "size": 17,
+                "color": {
+                  "field": "corrente_a",
+                  "fixed": "#FFFFFF"
+                }
+              },
+              "links": [
+                {
+                  "title": "Abrir cabine",
+                  "url": "/d/eletrometry-cabines?var-cabine=cabine-003&${__url_time_range}&theme=light",
+                  "targetBlank": false,
+                  "oneClick": true
+                }
+              ]
+            },
+            {
+              "name": "temperatura_a-176-94",
+              "type": "metric-value",
+              "placement": {
+                "left": 176,
+                "top": 94,
+                "width": 91,
+                "height": 30
+              },
+              "constraint": {
+                "horizontal": "scale",
+                "vertical": "scale"
+              },
+              "background": {
+                "color": {
+                  "fixed": "transparent"
+                }
+              },
+              "border": {
+                "radius": 8,
+                "width": 0
+              },
+              "config": {
+                "text": {
+                  "mode": "field",
+                  "field": "temperatura_a",
+                  "fixed": ""
+                },
+                "align": "left",
+                "valign": "middle",
+                "size": 17,
+                "color": {
+                  "field": "temperatura_a",
+                  "fixed": "#FFFFFF"
+                }
+              },
+              "links": [
+                {
+                  "title": "Abrir cabine",
+                  "url": "/d/eletrometry-cabines?var-cabine=cabine-003&${__url_time_range}&theme=light",
+                  "targetBlank": false,
+                  "oneClick": true
+                }
+              ]
+            },
+            {
+              "name": "Fase 2-16-139",
+              "type": "text",
+              "placement": {
+                "left": 16,
+                "top": 139,
+                "width": 64,
+                "height": 30
+              },
+              "constraint": {
+                "horizontal": "scale",
+                "vertical": "scale"
+              },
+              "background": {
+                "color": {
+                  "fixed": "transparent"
+                }
+              },
+              "border": {
+                "radius": 8,
+                "width": 0
+              },
+              "config": {
+                "text": {
+                  "mode": "fixed",
+                  "fixed": "Fase 2"
+                },
+                "align": "left",
+                "valign": "middle",
+                "size": 14,
+                "color": {
+                  "fixed": "#FFFFFF"
+                }
+              },
+              "links": [
+                {
+                  "title": "Abrir cabine",
+                  "url": "/d/eletrometry-cabines?var-cabine=cabine-003&${__url_time_range}&theme=light",
+                  "targetBlank": false,
+                  "oneClick": true
+                }
+              ]
+            },
+            {
+              "name": "corrente_b-84-139",
+              "type": "metric-value",
+              "placement": {
+                "left": 84,
+                "top": 139,
+                "width": 88,
+                "height": 30
+              },
+              "constraint": {
+                "horizontal": "scale",
+                "vertical": "scale"
+              },
+              "background": {
+                "color": {
+                  "fixed": "transparent"
+                }
+              },
+              "border": {
+                "radius": 8,
+                "width": 0
+              },
+              "config": {
+                "text": {
+                  "mode": "field",
+                  "field": "corrente_b",
+                  "fixed": ""
+                },
+                "align": "left",
+                "valign": "middle",
+                "size": 17,
+                "color": {
+                  "field": "corrente_b",
+                  "fixed": "#FFFFFF"
+                }
+              },
+              "links": [
+                {
+                  "title": "Abrir cabine",
+                  "url": "/d/eletrometry-cabines?var-cabine=cabine-003&${__url_time_range}&theme=light",
+                  "targetBlank": false,
+                  "oneClick": true
+                }
+              ]
+            },
+            {
+              "name": "temperatura_b-176-139",
+              "type": "metric-value",
+              "placement": {
+                "left": 176,
+                "top": 139,
+                "width": 91,
+                "height": 30
+              },
+              "constraint": {
+                "horizontal": "scale",
+                "vertical": "scale"
+              },
+              "background": {
+                "color": {
+                  "fixed": "transparent"
+                }
+              },
+              "border": {
+                "radius": 8,
+                "width": 0
+              },
+              "config": {
+                "text": {
+                  "mode": "field",
+                  "field": "temperatura_b",
+                  "fixed": ""
+                },
+                "align": "left",
+                "valign": "middle",
+                "size": 17,
+                "color": {
+                  "field": "temperatura_b",
+                  "fixed": "#FFFFFF"
+                }
+              },
+              "links": [
+                {
+                  "title": "Abrir cabine",
+                  "url": "/d/eletrometry-cabines?var-cabine=cabine-003&${__url_time_range}&theme=light",
+                  "targetBlank": false,
+                  "oneClick": true
+                }
+              ]
+            },
+            {
+              "name": "Fase 3-16-184",
+              "type": "text",
+              "placement": {
+                "left": 16,
+                "top": 184,
+                "width": 64,
+                "height": 30
+              },
+              "constraint": {
+                "horizontal": "scale",
+                "vertical": "scale"
+              },
+              "background": {
+                "color": {
+                  "fixed": "transparent"
+                }
+              },
+              "border": {
+                "radius": 8,
+                "width": 0
+              },
+              "config": {
+                "text": {
+                  "mode": "fixed",
+                  "fixed": "Fase 3"
+                },
+                "align": "left",
+                "valign": "middle",
+                "size": 14,
+                "color": {
+                  "fixed": "#FFFFFF"
+                }
+              },
+              "links": [
+                {
+                  "title": "Abrir cabine",
+                  "url": "/d/eletrometry-cabines?var-cabine=cabine-003&${__url_time_range}&theme=light",
+                  "targetBlank": false,
+                  "oneClick": true
+                }
+              ]
+            },
+            {
+              "name": "corrente_c-84-184",
+              "type": "metric-value",
+              "placement": {
+                "left": 84,
+                "top": 184,
+                "width": 88,
+                "height": 30
+              },
+              "constraint": {
+                "horizontal": "scale",
+                "vertical": "scale"
+              },
+              "background": {
+                "color": {
+                  "fixed": "transparent"
+                }
+              },
+              "border": {
+                "radius": 8,
+                "width": 0
+              },
+              "config": {
+                "text": {
+                  "mode": "field",
+                  "field": "corrente_c",
+                  "fixed": ""
+                },
+                "align": "left",
+                "valign": "middle",
+                "size": 17,
+                "color": {
+                  "field": "corrente_c",
+                  "fixed": "#FFFFFF"
+                }
+              },
+              "links": [
+                {
+                  "title": "Abrir cabine",
+                  "url": "/d/eletrometry-cabines?var-cabine=cabine-003&${__url_time_range}&theme=light",
+                  "targetBlank": false,
+                  "oneClick": true
+                }
+              ]
+            },
+            {
+              "name": "temperatura_c-176-184",
+              "type": "metric-value",
+              "placement": {
+                "left": 176,
+                "top": 184,
+                "width": 91,
+                "height": 30
+              },
+              "constraint": {
+                "horizontal": "scale",
+                "vertical": "scale"
+              },
+              "background": {
+                "color": {
+                  "fixed": "transparent"
+                }
+              },
+              "border": {
+                "radius": 8,
+                "width": 0
+              },
+              "config": {
+                "text": {
+                  "mode": "field",
+                  "field": "temperatura_c",
+                  "fixed": ""
+                },
+                "align": "left",
+                "valign": "middle",
+                "size": 17,
+                "color": {
+                  "field": "temperatura_c",
+                  "fixed": "#FFFFFF"
+                }
+              },
+              "links": [
+                {
+                  "title": "Abrir cabine",
+                  "url": "/d/eletrometry-cabines?var-cabine=cabine-003&${__url_time_range}&theme=light",
+                  "targetBlank": false,
+                  "oneClick": true
+                }
+              ]
+            }
+          ]
+        }
+      },
+      "pluginVersion": "12.2.0",
+      "links": [
+        {
+          "title": "Abrir dashboard da cabine",
+          "url": "/d/eletrometry-cabines?var-cabine=cabine-003&${__url_time_range}&theme=light",
+          "targetBlank": false
+        }
+      ]
+    },
+    {
+      "id": 6,
+      "title": "Alertas das Cabines",
+      "type": "table",
+      "gridPos": {
+        "x": 12,
+        "y": 10,
+        "w": 12,
+        "h": 14
+      },
+      "description": "Últimas 50 ocorrências confirmadas no período. Valor = máximo do evento. Histórico, não necessariamente alertas ainda ativos.",
+      "datasource": {
+        "type": "datasource",
+        "uid": "-- Dashboard --"
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "datasource",
+            "uid": "-- Dashboard --"
+          },
+          "panelId": 1,
+          "withTransforms": false
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "decimals": 1,
+          "noValue": "Sem dados",
+          "color": {
+            "mode": "fixed",
+            "fixedColor": "#20234F"
+          },
+          "mappings": []
+        },
+        "overrides": [
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Nivel"
+            },
+            "properties": [
+              {
+                "id": "mappings",
+                "value": [
+                  {
+                    "type": "value",
+                    "options": {
+                      "Crítico": {
+                        "text": "Crítico",
+                        "color": "red"
+                      },
+                      "Moderado": {
+                        "text": "Moderado",
+                        "color": "orange"
+                      },
+                      "Atenção": {
+                        "text": "Atenção",
+                        "color": "yellow"
+                      }
+                    }
+                  }
+                ]
+              },
+              {
+                "id": "custom.cellOptions",
+                "value": {
+                  "type": "color-background"
+                }
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Confirmado"
+            },
+            "properties": [
+              {
+                "id": "unit",
+                "value": "dateTimeFromNow"
+              }
+            ]
+          }
+        ]
+      },
+      "options": {
+        "showHeader": true,
+        "cellHeight": "lg",
+        "sortBy": [
+          {
+            "displayName": "Confirmado",
+            "desc": true
+          }
+        ]
+      },
+      "pluginVersion": "12.2.0",
+      "transformations": [
+        {
+          "id": "filterDataByValues",
+          "options": {
+            "filters": [
+              {
+                "fieldName": "Cabine",
+                "config": {
+                  "id": "isNotNull",
+                  "options": {}
+                }
+              }
+            ],
+            "type": "include",
+            "match": "all"
+          }
+        },
+        {
+          "id": "filterFieldsByName",
+          "options": {
+            "include": {
+              "names": [
+                "Nivel",
+                "Alerta",
+                "Cabine",
+                "Fase",
+                "Valor",
+                "Unidade",
+                "Confirmado"
+              ]
+            }
+          }
+        }
+      ]
+    }
+  ],
+  "templating": {
+    "list": []
+  }
+}

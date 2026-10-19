@@ -1,0 +1,16 @@
+[Unit]
+Description=Instalacao automatica Grafana e Neo4j
+After=network-online.target cloud-final.service
+Wants=network-online.target
+ConditionPathExists=!/var/lib/eletrometry-observability/installed
+StartLimitIntervalSec=0
+
+[Service]
+Type=oneshot
+ExecStart=/bin/bash /opt/eletrometry-observability/install.sh
+TimeoutStartSec=1800
+Restart=on-failure
+RestartSec=60
+
+[Install]
+WantedBy=multi-user.target

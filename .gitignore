@@ -17,3 +17,7 @@ __pycache__/
 crash.log
 .lab-last-command.json
 telemetry/dados/
+.state-backup-integracao-*/
+*.tfplan
+infra/observability.auto.tfvars.json
+.grafana-last-command.json

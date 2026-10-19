@@ -45,6 +45,15 @@ class TelemetryIntegrationTests(unittest.TestCase):
             self.assertEqual(counts, Counter({(f'cabine-{i:03d}', kind): count
                              for i in range(1, 4) for kind, count in [('corrente', 120), ('temperatura', 4)]}))
 
+    def test_one_second_temperature(self):
+        with tempfile.TemporaryDirectory() as directory:
+            subprocess.run([sys.executable,str(ROOT/'telemetry/simulador_eletrometry.py'),'simular','--cabines','3','--duracao','15','--modo','acelerado','--temperatura-intervalo','1','--saida',directory],check=True,capture_output=True)
+            folder=next(Path(directory).glob('*/manifesto.json')).parent
+            events=remote.expected_events(folder)
+            self.assertEqual(len(events),90)
+            self.assertEqual(Counter(kind for cab,kind in events.values()),{'corrente':45,'temperatura':45})
+            self.assertEqual(json.loads((folder/'manifesto.json').read_text())['coleta_s'],{'corrente':1,'temperatura':1})
+
     def test_equal_count_but_wrong_events_is_not_success(self):
         expected = {'id1': ('cabine-001', 'corrente')}
         self.assertFalse(remote.compare_events(expected, [('other', 'cabine-001', 'corrente')]))

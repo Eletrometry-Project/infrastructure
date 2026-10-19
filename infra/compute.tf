@@ -10,6 +10,7 @@ locals {
   })
   # Edicao Lab: credenciais geradas seguem no user-data e state; arquivo admin local e apagado apos bootstrap.
   bootstrap_files = {
+    "patch_simulator.py" = { path = "/opt/eletrometry-package/deploy/patch_simulator.py", mode = "0644", content = file("${path.module}/../deploy/patch_simulator.py") }
     "lab_remote.py"                 = { path = "/opt/eletrometry-package/deploy/lab_remote.py", mode = "0644", content = file("${path.module}/../deploy/lab_remote.py") }
     "install_application.sh"        = { path = "/opt/eletrometry-package/deploy/install_application.sh", mode = "0750", content = file("${path.module}/../deploy/install_application.sh") }
     "eletrometry-simulator.service" = { path = "/opt/eletrometry-package/deploy/eletrometry-simulator.service", mode = "0644", content = file("${path.module}/../deploy/eletrometry-simulator.service") }
@@ -45,6 +46,9 @@ resource "aws_instance" "consumer" {
   iam_instance_profile        = local.instance_profile_name
   user_data_base64            = base64gzip(local.cloud_init)
   user_data_replace_on_change = true
+  lifecycle {
+    ignore_changes = [ami, user_data_base64]
+  }
   metadata_options {
     http_endpoint               = "enabled"
     http_tokens                 = "required"

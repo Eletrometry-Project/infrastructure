@@ -7,16 +7,18 @@ output "runtime_config" { value = jsondecode(local.runtime_config) }
 output "lab" {
   description = "Informacoes usadas por lab.ps1; nenhum segredo e exibido."
   value = {
-    aws_profile          = var.aws_profile
-    aws_region           = var.aws_region
-    account_id           = var.aws_account_id
-    consumer_public_ip   = aws_instance.consumer.public_ip
-    consumer_instance_id = aws_instance.consumer.id
-    generated_key        = local.generate_ssh_key
-    iot_sqs_role_arn     = local.iot_sqs_role_arn
+    aws_profile               = var.aws_profile
+    aws_region                = var.aws_region
+    account_id                = var.aws_account_id
+    consumer_public_ip        = aws_instance.consumer.public_ip
+    consumer_instance_id      = aws_instance.consumer.id
+    observability_instance_id = aws_instance.observability.id
+    grafana_url               = "http://${aws_lb.grafana.dns_name}"
+    neo4j_browser_url         = "http://${aws_eip.observability.public_ip}:7474/browser/"
+    neo4j_bolt_url            = "bolt://${aws_eip.observability.public_ip}:7687"
+    target_group_arn          = aws_lb_target_group.grafana.arn
+    generated_key             = local.generate_ssh_key
+    iot_sqs_role_arn          = local.iot_sqs_role_arn
   }
 }
-output "next_step" { value = "A EC2 ainda pode estar instalando. Na pasta do projeto: .\\lab.ps1 status; depois .\\lab.ps1 testar" }
-output "future_load_balancer" {
-  value = "ALB previsto para a etapa 2 (site/Grafana); nao criado nem cobrado por este pacote."
-}
+output "next_step" { value = "As duas EC2 podem estar instalando. Na pasta do projeto: .\\lab.ps1 status; depois .\\lab.ps1 testar" }

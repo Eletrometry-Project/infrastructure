@@ -288,15 +288,15 @@ class Cabine:
                 'tau_termico_s_por_fase': dict(zip(PHASES, self.taus))}
 
 
-def messages(cabine, dt, elapsed, run_id, executor, config_id):
-    kinds = ['corrente', 'temperatura'] if elapsed % 30 == 0 else ['corrente']
+def messages(cabine, dt, elapsed, run_id, executor, config_id, temperatura_intervalo=30):
+    kinds = ['corrente', 'temperatura'] if elapsed % temperatura_intervalo == 0 else ['corrente']
     for kind in kinds:
         # Amostragem continua mesmo sem comunicacao; pacotes desse cenario sao
         # perdidos intencionalmente. Falha real no envio usa a fila persistente.
         values, quality = cabine.measure(kind)
         if cabine.active and cabine.active['tipo'] == 'sem_comunicacao':
             continue
-        interval = 1 if kind == 'corrente' else 30
+        interval = 1 if kind == 'corrente' else temperatura_intervalo
         yield {
             'schema_version': 1, 'simulator_version': VERSION,
             'run_id': run_id, 'event_id': f'{run_id}:{cabine.id}:{kind}:{elapsed // interval}',
@@ -457,6 +457,7 @@ def build_parser():
     p = subs.add_parser('simular', help='Gerar dados e, opcionalmente, publicar no IoT Core.')
     p.add_argument('--config', help='Perfil fisico em JSON; sem arquivo usa 400 A / TC 600 A.')
     p.add_argument('--cenarios', help='Falhas programadas em JSON; omitido = operacao normal.')
+    p.add_argument('--temperatura-intervalo', type=int, choices=range(1,61), default=30, help='Cadência da temperatura em segundos (1 no laboratório integrado).')
     p.add_argument('--cabines', type=int, default=3)
     p.add_argument('--primeira-cabine', type=int, default=1)
     p.add_argument('--executor', default='local-01')
@@ -498,7 +499,7 @@ def validate_args(args):
         raise ValueError('--prefixo-topico exige dois niveis, exemplo eletrometry/demo.')
     if args.basic_ingest_rule and not re.fullmatch(r'[A-Za-z0-9_]+', args.basic_ingest_rule):
         raise ValueError('Nome de regra Basic Ingest invalido.')
-    if args.destino == 'iot' and args.taxa_envio < args.cabines * (1 + 1 / 30):
+    if args.destino == 'iot' and args.taxa_envio < args.cabines * (1 + 1 / args.temperatura_intervalo):
         raise ValueError('Taxa de envio insuficiente: reduza cabines ou aumente --taxa-envio apos conferir quotas e creditos.')
 
 
@@ -516,14 +517,14 @@ def simulate(args):
         'simulator_version': VERSION, 'run_id': run_id, 'config_id': config_id,
         'seed': args.seed, 'inicio_utc': utc_text(start), 'configuracao': conf,
         'cabines': [c.metadata() for c in cabines],
-        'coleta_s': {'corrente': 1, 'temperatura': 30}, 'argumentos': vars(args),
+        'coleta_s': {'corrente': 1, 'temperatura': args.temperatura_intervalo}, 'argumentos': vars(args),
         'modelo_validado_em_campo': False,
     }
     (root / 'manifesto.json').write_text(json.dumps(manifest, ensure_ascii=False, indent=2), encoding='utf-8')
     (root / 'cenarios_referencia.json').write_text(json.dumps(scenarios, ensure_ascii=False, indent=2), encoding='utf-8')
     LOG.info('Execucao %s | saida %s', run_id, root)
     if not args.continuo:
-        expected = args.cabines * (args.duracao + (args.duracao + 29) // 30)
+        expected = args.cabines * (args.duracao + (args.duracao + args.temperatura_intervalo - 1) // args.temperatura_intervalo)
         LOG.info('Ate %s mensagens / %s valores individuais, antes de falhas de comunicacao.', expected, expected * 3)
     LOG.info('Corrente nominal %.0f A; faixa do TC %.0f A; perfil sintetico nao calibrado em campo.',
              conf['corrente_nominal_a'], conf['tc_fundo_escala_a'])
@@ -547,7 +548,7 @@ def simulate(args):
             pairs = []
             for cabine in cabines:
                 cabine.step(dt, tick)
-                for message in messages(cabine, dt, tick, run_id, args.executor, config_id):
+                for message in messages(cabine, dt, tick, run_id, args.executor, config_id, args.temperatura_intervalo):
                     topic = f'{args.prefixo_topico}/{cabine.id}/{message["tipo"]}'
                     if args.basic_ingest_rule:
                         topic = f'$aws/rules/{args.basic_ingest_rule}/{topic}'

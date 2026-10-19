@@ -166,7 +166,7 @@ def smoke(config):
 def simulator_args(config, output, continuous=False, duration=120):
     command = [str(ROOT / 'venv/bin/python'), str(ROOT / 'telemetry/simulador_eletrometry.py'), 'simular',
                '--config', str(ROOT / 'telemetry/config_industrial.json'), '--cabines', '3',
-               '--modo', 'tempo-real', '--destino', 'iot', '--regiao', config['aws_region'],
+               '--temperatura-intervalo', '1', '--modo', 'tempo-real', '--destino', 'iot', '--regiao', config['aws_region'],
                '--endpoint', endpoint(config), '--executor', 'ec2-lab', '--saida', str(output)]
     return command + (['--continuo'] if continuous else ['--duracao', str(duration)])
 
@@ -185,7 +185,7 @@ def simulate(config, duration):
     manifest = json.loads(manifests[0].read_text())
     summary = json.loads((folder / 'resumo.json').read_text())
     expected = expected_events(folder)
-    count = 3 * (duration + (duration + 29) // 30)
+    count = 3 * duration * 2
     if len(expected) != count or summary['mensagens_aceitas_iot'] != count or summary['pendencias'] or summary['erro']:
         raise RuntimeError('Geracao/publicacao incompleta: ' + json.dumps(summary))
     return verify_run(config, manifest['run_id'], expected)

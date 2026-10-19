@@ -57,7 +57,7 @@ systemctl daemon-reload
 systemctl stop eletrometry-consumer.service
 /opt/eletrometry/venv/bin/python /opt/eletrometry/setup_database.py
 systemctl enable --now eletrometry-consumer.service
-# Fontes fixadas, iguais as copias incluidas no ZIP. O bootstrap baixa esses commits.
+# Fontes fixadas; adaptação local de cadência verificada por hash.
 install -d "$package_dir/consumer" "$package_dir/telemetry"
 cp /opt/eletrometry/repo/consumidor_sqs_mysql.py "$package_dir/consumer/"
 if [[ ! -d /opt/eletrometry/simulator-source/.git ]]; then
@@ -67,5 +67,6 @@ git -C /opt/eletrometry/simulator-source fetch origin "$simulator_commit"
 git -C /opt/eletrometry/simulator-source checkout --detach "$simulator_commit"
 test "$(git -C /opt/eletrometry/simulator-source rev-parse HEAD)" = "$simulator_commit"
 cp /opt/eletrometry/simulator-source/simulador_eletrometry.py /opt/eletrometry/simulator-source/*.json "$package_dir/telemetry/"
+/opt/eletrometry/venv/bin/python "$package_dir/deploy/patch_simulator.py" "$package_dir/telemetry/simulador_eletrometry.py"
 bash "$package_dir/deploy/install_application.sh"
 echo 'Bootstrap concluido: consumidor e simulador continuo iniciados. Execute lab.ps1 testar.' 
