@@ -1,6 +1,6 @@
 # Transpilador Eletrometry — ELT v1
 
-Implementação proposta, independente da infraestrutura em uso. Traduz ELT para consultas de leitura MySQL 8. Não altera tabelas, não publica dashboards e não opera equipamentos. Limites de exemplo são provisórios.
+Implementação integrada ao Terraform em `infra/`, com compilação local também disponível. Traduz ELT para consultas de leitura MySQL 8. Não altera tabelas, não publica dashboards e não opera equipamentos. Limites de exemplo são provisórios.
 
 ## Comece em cinco minutos
 
@@ -73,7 +73,7 @@ Essa é uma validação manual. Não substitua as cinco dashboards automaticamen
 
 ## AWS
 
-Veja AWS.md. Handler fornecido: transpiler.lambda_handler.handler.
+Veja [o manual de implantação e Actions](AWS.md). O Terraform empacota e provisiona S3/Lambda no mesmo apply do laboratório. Handler fornecido: transpiler.lambda_handler.handler.
 Recebe ObjectCreated do S3, lê a versão exata do arquivo e grava SQL/metadados ou relatório de erro. Não executa SQL. Somente entrada/*.elt é processado; não acompanha a ordem de chegada para publicar regras.
 
 ## Onde estudar
