@@ -81,26 +81,10 @@ locals {
     grafana_url      = "http://${aws_lb.grafana.dns_name}"
     public_ip        = aws_eip.observability.public_ip
   }
-  observability_sources = concat(
-    [for name in ["install.sh", "configure.py", "health.py", "build_dashboard.py", "dashboard_sql.py", "analysis_rules.json", "eletrometry-bootstrap.service"] : {
-      path = "/opt/eletrometry-observability/${name}", mode = "0644", content = file("${path.module}/../observability/${name}")
-    }],
-    [for name in ["Dockerfile", "health.sh", "eletrometry-neo4j.service"] : {
-      path = "/opt/eletrometry-observability/neo4j/${name}", mode = "0644", content = file("${path.module}/../observability/neo4j/${name}")
-    }],
-    [
-    { path = "/etc/eletrometry-observability/bootstrap.json", mode = "0600", content = jsonencode(local.observability_runtime) }]
-  )
-  observability_cloud_init = "#cloud-config\n${jsonencode({
-    write_files = [for item in local.observability_sources : {
-      path = item.path, permissions = item.mode, owner = "root:root", content = item.content
-    }]
-    runcmd = [
-      ["cp", "/opt/eletrometry-observability/eletrometry-bootstrap.service", "/etc/systemd/system/eletrometry-bootstrap.service"],
-      ["systemctl", "daemon-reload"],
-      ["systemctl", "enable", "--now", "--no-block", "eletrometry-bootstrap.service"]
-    ]
-  })}"
+  observability_cloud_init = templatefile("${path.module}/panel-bootstrap.tftpl", {
+    files   = filebase64("${path.module}/panel-files.br")
+    runtime = base64encode(jsonencode(local.observability_runtime))
+  })
 }
 resource "aws_instance" "observability" {
   ami                         = local.consumer_ami_id
@@ -129,7 +113,7 @@ resource "aws_instance" "observability" {
     # Reinstalacao de software: lab.ps1 reparar-paineis; troca de AMI exige migracao planejada.
     ignore_changes = [ami, user_data_base64]
     precondition {
-      condition     = length(base64gzip(local.observability_cloud_init)) <= 21844
+      condition     = floor(length(trim(base64gzip(local.observability_cloud_init), "=")) * 3 / 4) <= 16384
       error_message = "User-data dos paineis excede o limite EC2 de 16 KiB comprimidos."
     }
   }

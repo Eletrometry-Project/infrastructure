@@ -75,3 +75,27 @@ run "reject_open_ssh" {
   variables { admin_ipv4_cidr = "0.0.0.0/0" }
   expect_failures = [var.admin_ipv4_cidr]
 }
+run "frontend_privado_para_grafana" {
+  command = plan
+  assert {
+    condition     = aws_instance.frontend.instance_type == "t3.micro" && aws_instance.frontend.metadata_options[0].http_tokens == "required" && aws_eip_association.frontend.instance_id == aws_instance.frontend.id
+    error_message = "Portal exige EC2 propria, IMDSv2 e IP publico associado."
+  }
+  assert {
+    condition     = aws_vpc_security_group_ingress_rule.frontend_https["0.0.0.0/0"].from_port == 443 && aws_vpc_security_group_ingress_rule.frontend_https["0.0.0.0/0"].to_port == 443
+    error_message = "A demonstracao publica deve liberar a porta HTTPS."
+  }
+  assert {
+    condition     = aws_vpc_security_group_ingress_rule.frontend_grafana.security_group_id == aws_security_group.observability.id && aws_vpc_security_group_ingress_rule.frontend_grafana.referenced_security_group_id == aws_security_group.frontend.id && aws_vpc_security_group_ingress_rule.frontend_grafana.to_port == 3000
+    error_message = "Grafana deve aceitar a conexao apenas a partir do grupo de seguranca autorizado."
+  }
+}
+
+run "portal_restrito" {
+  command = plan
+  variables { portal_publico = false }
+  assert {
+    condition     = toset(keys(aws_vpc_security_group_ingress_rule.frontend_https)) == toset(["192.0.2.10/32"])
+    error_message = "No modo restrito somente os IPv4 autorizados recebem acesso."
+  }
+}

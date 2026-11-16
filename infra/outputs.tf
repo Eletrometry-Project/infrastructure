@@ -17,8 +17,13 @@ output "lab" {
     neo4j_browser_url         = "http://${aws_eip.observability.public_ip}:7474/browser/"
     neo4j_bolt_url            = "bolt://${aws_eip.observability.public_ip}:7687"
     target_group_arn          = aws_lb_target_group.grafana.arn
+    frontend_instance_id      = aws_instance.frontend.id
+    frontend_private_ip       = aws_instance.frontend.private_ip
+    frontend_public_ip        = aws_eip.frontend.public_ip
+    grafana_private_ip        = aws_instance.observability.private_ip
+    portal_url                = "https://${aws_eip.frontend.public_ip}"
     generated_key             = local.generate_ssh_key
     iot_sqs_role_arn          = local.iot_sqs_role_arn
   }
 }
-output "next_step" { value = "As duas EC2 podem estar instalando. Na pasta do projeto: .\\lab.ps1 status; depois .\\lab.ps1 testar" }
+output "next_step" { value = "As EC2 podem estar instalando. Na pasta do projeto: .\\lab.ps1 status; depois .\\lab.ps1 testar" }

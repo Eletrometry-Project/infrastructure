@@ -18,7 +18,6 @@ systemctl stop grafana-server
 python3 -m venv "$base/venv"
 "$base/venv/bin/pip" install --quiet 'mysql-connector-python>=9,<10' 'PyYAML>=6,<7'
 curl --fail --silent --show-error --retry 5 https://truststore.pki.rds.amazonaws.com/global/global-bundle.pem -o /etc/eletrometry-observability/global-bundle.pem
-"$base/venv/bin/python" "$base/build_dashboard.py"
 "$base/venv/bin/python" "$base/configure.py"
 systemctl unmask grafana-server
 systemctl enable --now grafana-server docker

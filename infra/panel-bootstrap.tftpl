@@ -1,0 +1,17 @@
+#!/usr/bin/python3
+import base64,json,os,subprocess
+subprocess.run(["apt-get","-o","Acquire::Retries=3","update","-qq"],check=True)
+subprocess.run(["apt-get","-o","DPkg::Lock::Timeout=180","install","-y","brotli"],check=True)
+from pathlib import Path
+root=Path('/opt/eletrometry-observability')
+for name,data in json.loads(subprocess.check_output(['brotli','-dc'],input=base64.b64decode('${files}'))).items():
+    p=root/name
+    p.parent.mkdir(parents=True,exist_ok=True)
+    p.write_text(data)
+config=Path('/etc/eletrometry-observability/bootstrap.json')
+os.umask(0o077)
+config.parent.mkdir(exist_ok=True)
+config.write_bytes(base64.b64decode('${runtime}'))
+subprocess.run(['install','-m','0644',root/'eletrometry-bootstrap.service','/etc/systemd/system/'],check=True)
+subprocess.run(['systemctl','daemon-reload'],check=True)
+subprocess.run(['systemctl','enable','--now','--no-block','eletrometry-bootstrap.service'],check=True)

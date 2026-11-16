@@ -31,7 +31,8 @@ class FakeDB:
         self.events, self.fail, self.rowcount = events, fail, rowcount
 
     def cursor(self): return self
-    def execute(self, sql, row):
+    def executemany(self, sql, rows):
+        self.rows = rows
         self.events.append("insert")
         if self.fail:
             raise mysql.connector.Error("synthetic failure")
@@ -45,8 +46,10 @@ class FakeSQS:
         self.events, self.messages = events, messages
     def receive_message(self, **kwargs):
         return {"Messages": self.messages}
-    def delete_message(self, **kwargs):
+    def delete_message_batch(self, **kwargs):
+        self.entries = kwargs["Entries"]
         self.events.append("delete")
+        return {"Successful": [{"Id": item["Id"]} for item in self.entries]}
 
 
 class ConsumerContractTests(unittest.TestCase):
@@ -75,6 +78,40 @@ class ConsumerContractTests(unittest.TestCase):
         result = consumer.consume(FakeSQS(events, [message()]), FakeDB(events, rowcount=0), "mock-url", 1)
         self.assertEqual(result, 0)
         self.assertEqual(events, ["insert", "commit", "delete"])
+
+    def test_ten_messages_use_one_transaction_and_one_ack(self):
+        events = []
+        db = FakeDB(events)
+        sqs = FakeSQS(events, [message(str(i)) for i in range(10)])
+        self.assertEqual(consumer.consume(sqs, db, 'mock-url', 1), 0)
+        self.assertEqual(events, ['insert', 'commit', 'delete'])
+        self.assertEqual(len(db.rows), 10)
+        self.assertEqual(len(sqs.entries), 10)
+
+    def test_commit_failure_keeps_entire_batch(self):
+        events = []
+        db = FakeDB(events)
+        def fail():
+            events.append('commit')
+            raise mysql.connector.Error('commit failed')
+        db.commit = fail
+        self.assertEqual(consumer.consume(FakeSQS(events, [message('1'), message('2')]), db, 'mock', 1), 1)
+        self.assertEqual(events, ['insert', 'commit', 'rollback'])
+
+    def test_partial_ack_is_not_reported_as_complete(self):
+        events = []
+        sqs = FakeSQS(events, [message('1'), message('2')])
+        sqs.delete_message_batch = lambda **kw: {'Successful': [{'Id':'0'}], 'Failed':[{'Id':'1','Code':'InternalError'}]}
+        self.assertEqual(consumer.consume(sqs, FakeDB(events), 'mock', 1), 1)
+        self.assertEqual(events, ['insert', 'commit'])
+
+    def test_invalid_message_is_excluded_from_ack_batch(self):
+        events = []
+        invalid = message('bad'); invalid['Body'] = '{}'
+        sqs = FakeSQS(events, [invalid, message('valid')]); db = FakeDB(events)
+        self.assertEqual(consumer.consume(sqs, db, 'mock', 1), 0)
+        self.assertEqual([row[0] for row in db.rows], ['valid'])
+        self.assertEqual(len(sqs.entries), 1)
 
     def test_quality_null_contract(self):
         payload = json.loads(message()["Body"])

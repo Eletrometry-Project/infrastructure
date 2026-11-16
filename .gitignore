@@ -21,3 +21,5 @@ telemetry/dados/
 *.tfplan
 infra/observability.auto.tfvars.json
 .grafana-last-command.json
+
+portal-lab.cer

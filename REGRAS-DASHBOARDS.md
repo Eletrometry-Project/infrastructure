@@ -74,4 +74,7 @@ Parâmetros: `observability/analysis_rules.json`; fórmulas: `dashboard_sql.py`;
 
 Os medidores visuais desta versão pressupõem capacidade igual em todas as cabines. Para capacidades diferentes, ajustar também os medidores; não basta mudar as capacidades nas consultas.
 
-Canvas, Stat, Bar gauge, Time series e Table são nativos. Navegação, seletores, lista e espaçamentos seguem o Grafana; não é reprodução pixel a pixel da barra lateral de um site separado.
+Na revisão visual v3, Stat, Bar gauge, Time series e Table substituem os blocos Canvas; todos são nativos. Navegação, seletores, lista e espaçamentos seguem o Grafana; não é reprodução pixel a pixel da barra lateral de um site separado.
+
+
+Revisão visual v3 (02/11/2026): veja ATUALIZACAO-VISUAL-V3.md. Os cálculos não mudaram. Os atalhos incluem 10 min e 1 hora. A saúde mostra a idade do canal selecionado e o estado de comunicação por fase; o maior valor por fase e seus desvios aparecem em painéis próprios.

@@ -1,8 +1,11 @@
 # Windows PowerShell 5.1 / PowerShell 7. Administracao e testes usam SSM (HTTPS).
 param(
-    [ValidateSet('subir','atualizar','status','testar','simular','iniciar','parar','logs','entrar','acesso','paineis','reparar-paineis','liberar-ip','dashboards')]
+    [ValidateSet('subir','atualizar','status','testar','simular','iniciar','parar','logs','entrar','acesso','paineis','reparar-paineis','liberar-ip','dashboards','portal','perfil-portal','verificar-portal')]
     [string]$Acao = 'status',
-    [ValidateRange(1,600)][int]$Duracao = 120
+    [ValidateRange(1,600)][int]$Duracao = 120,
+    [ValidateSet('normal','criticidades')][string]$Cenario = 'normal',
+    [string]$Email,
+    [ValidateSet('Analista','Gestor')][string]$Papel = 'Analista'
 )
 $ErrorActionPreference = 'Stop'
 $env:AWS_PAGER = ''
@@ -15,7 +18,7 @@ function Invoke-Aws([string[]]$Argumentos) {
     Assert-Exit 'AWS CLI (confira a mensagem acima)'
     return ($result -join "`n")
 }
-function Invoke-Remote([string]$Command, [int]$Timeout = 900) {
+function Invoke-Remote([string]$Command, [int]$Timeout = 900, [switch]$Capture) {
     $parametersPath = Join-Path ([IO.Path]::GetTempPath()) ('eletrometry-' + [guid]::NewGuid().ToString('N') + '.json')
     try {
         # Arquivo JSON evita a perda de aspas no Windows PowerShell 5.1.
@@ -44,11 +47,12 @@ function Invoke-Remote([string]$Command, [int]$Timeout = 900) {
             }
             $invocation = $raw | ConvertFrom-Json
             if ($invocation.Status -notin @('Pending','InProgress','Delayed','Cancelling')) {
-                if ($invocation.StandardOutputContent) { Write-Host $invocation.StandardOutputContent }
+                if (-not $Capture -and $invocation.StandardOutputContent) { Write-Host $invocation.StandardOutputContent }
                 if ($invocation.StandardErrorContent) { Write-Host $invocation.StandardErrorContent }
                 if ($invocation.Status -ne 'Success' -or $invocation.ResponseCode -ne 0) {
                     throw "Comando SSM $id terminou com $($invocation.Status), codigo $($invocation.ResponseCode). Use .\lab.ps1 logs."
                 }
+                if ($Capture) { return [string]$invocation.StandardOutputContent }
                 return
             }
             $poll++
@@ -58,6 +62,7 @@ function Invoke-Remote([string]$Command, [int]$Timeout = 900) {
     } finally { Remove-Item -LiteralPath $parametersPath -ErrorAction SilentlyContinue }
 }
 
+$publishAfterApply=($Acao -eq 'subir')
 $justApplied = $false
 if ($Acao -in @('subir','liberar-ip')) {
     & terraform "-chdir=$infra" init -input=false
@@ -76,7 +81,8 @@ if ($Acao -in @('subir','liberar-ip')) {
     & terraform "-chdir=$infra" validate
     Assert-Exit 'terraform validate'
     & (Join-Path $PSScriptRoot 'scripts/migrate_grafana_state.ps1') -ProjectRoot $PSScriptRoot
-    & terraform "-chdir=$infra" plan -out=integrado.tfplan -input=false
+    $planArgs = @("-chdir=$infra", 'plan', '-out=integrado.tfplan', '-input=false')
+    & terraform @planArgs
     Assert-Exit 'terraform plan'
     $confirm=Read-Host 'Revise o plano. Digite yes para aplicar'
     if ($confirm -cne 'yes') { Write-Host 'Plano nao aplicado.'; return }
@@ -125,7 +131,15 @@ function Invoke-PanelStatus {
         Write-Host 'Para ver os logins: .\lab.ps1 acesso'
     } finally { $script:instanceId=$saved }
 }
-if ($Acao -notin @('acesso','paineis','reparar-paineis','dashboards')) {
+if ($publishAfterApply) {
+    $script:instanceId=$lab.observability_instance_id
+    Wait-Node $script:instanceId 600
+    Invoke-Remote 'set -e; for i in $(seq 1 240); do if test -f /etc/eletrometry-observability/runtime.json && curl -fsS http://127.0.0.1:3000/api/health >/dev/null; then exit 0; fi; sleep 5; done; echo Grafana indisponivel; exit 1' 1250
+    & (Join-Path $PSScriptRoot 'lab.ps1') -Acao dashboards
+    & (Join-Path $PSScriptRoot 'lab.ps1') -Acao portal
+    return
+}
+if ($Acao -notin @('acesso','paineis','reparar-paineis','dashboards','portal','perfil-portal','verificar-portal')) {
     Wait-Node $instanceId $(if ($justApplied) {600} else {30})
     if ($justApplied) {
         Invoke-Remote 'cloud-init status --wait || test -f /etc/eletrometry/runtime.json' 1200
@@ -133,6 +147,29 @@ if ($Acao -notin @('acesso','paineis','reparar-paineis','dashboards')) {
 }
 $python = '/opt/eletrometry/venv/bin/python /opt/eletrometry/lab_remote.py'
 switch ($Acao) {
+    'verificar-portal' {
+        if (-not $lab.frontend_instance_id) { throw 'Frontend ausente no state. Execute .\lab.ps1 subir.' }
+        $script:instanceId=$lab.frontend_instance_id
+        Wait-Node $script:instanceId 60
+        Invoke-Remote 'set -e; systemctl is-active docker; docker inspect --format "{{.State.Status}}" eletrometry-portal; docker exec eletrometry-portal node smoke.mjs'
+        $tcp=New-Object System.Net.Sockets.TcpClient
+        try {
+            $attempt=$tcp.ConnectAsync([string]$lab.frontend_public_ip,443)
+            if (-not $attempt.Wait(5000) -or -not $tcp.Connected) { throw 'Porta 443 inacessivel a partir deste computador.' }
+        } finally { $tcp.Dispose() }
+        Write-Host "Portal verificado a partir da EC2 e porta 443 acessivel deste computador: $($lab.portal_url)"
+    }
+    'portal' {
+        . (Join-Path $PSScriptRoot 'scripts/publish_frontend.ps1')
+        Publish-Frontend $PSScriptRoot
+    }
+    'perfil-portal' {
+        if (-not $lab.frontend_instance_id) { throw 'Execute subir primeiro.' }
+        if ($Email -notmatch '^[A-Za-z0-9._+%-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}$') { throw 'Informe -Email e -Papel.' }
+        $script:instanceId=$lab.frontend_instance_id
+        Wait-Node $script:instanceId
+        Invoke-Remote "docker exec eletrometry-portal node server.mjs --role '$Email' '$Papel'"
+    }
     'paineis' { Invoke-PanelStatus }
     'acesso' {
         $script:instanceId=$lab.observability_instance_id
@@ -153,22 +190,23 @@ PYCODE
         Write-Host "Conexao Neo4j: $($lab.neo4j_bolt_url)"
     }
     'dashboards' {
+        Write-Host 'ELETROMETRY v6 - instalacao de CINCO dashboards'
         $script:instanceId=$lab.observability_instance_id
         if (-not $instanceId) { throw 'Execute .\lab.ps1 subir primeiro.' }
         Wait-Node $instanceId
         . (Join-Path $PSScriptRoot 'scripts/send_text_ssm.ps1')
         $remote='/tmp/eletrometry-dashboards-'+[guid]::NewGuid().ToString('N')
         # Valida os dois documentos localmente antes de iniciar a transferencia.
-        foreach ($name in @('visao-geral','eletrometry')) {
+        foreach ($name in @('visao-geral','eletrometry','historico','gestor','tendencias')) {
             $file=Join-Path $PSScriptRoot "observability/dashboards/$name.json"
             $document=[IO.File]::ReadAllText($file) | ConvertFrom-Json
-            $expected=if ($name -eq 'visao-geral') {'eletrometry-visao-geral'} else {'eletrometry-cabines'}
+            $expected=if ($name -eq 'visao-geral') {'eletrometry-visao-geral'} elseif ($name -eq 'gestor') {'eletrometry-gestor'} elseif ($name -eq 'tendencias') {'eletrometry-tendencias'} elseif ($name -eq 'historico') {'eletrometry-historico'} else {'eletrometry-cabines'}
             if ($document.uid -ne $expected -or -not $document.panels) { throw "Dashboard invalida: $name" }
         }
         Invoke-Remote "set -e; umask 077; mkdir '$remote'; mkdir '$remote/dashboards'"
         Write-Host 'Enviando instalador e dashboards em texto UTF-8 com verificacao SHA-256...'
         Send-TextSsm (Join-Path $PSScriptRoot 'observability/install_dashboards.py') "$remote/install_dashboards.py"
-        foreach ($name in @('visao-geral','eletrometry')) {
+        foreach ($name in @('visao-geral','eletrometry','historico','gestor','tendencias')) {
             Send-TextSsm (Join-Path $PSScriptRoot "observability/dashboards/$name.json") "$remote/dashboards/$name.json"
         }
         # So executa apos as tres transferencias passarem pela verificacao de integridade.
@@ -210,7 +248,7 @@ PYCODE
     }
     'status' { Invoke-Remote "test -f /opt/eletrometry/lab_remote.py || { echo 'Execute .\lab.ps1 atualizar primeiro.'; exit 1; }; $python status"; Invoke-PanelStatus }
     'testar' { Invoke-Remote "$python testar" 240 }
-    'simular' { Invoke-Remote "$python simular --duration $Duracao" ($Duracao + 240) }
+    'simular' { Invoke-Remote "$python simular --duration $Duracao --scenario $Cenario" ($Duracao + 240) }
     'iniciar' { Invoke-Remote 'systemctl enable --now eletrometry-consumer eletrometry-simulator; systemctl is-active eletrometry-consumer eletrometry-simulator' }
     'parar' { Invoke-Remote 'systemctl disable --now eletrometry-simulator; echo Simulador parado. Consumidor continua esvaziando a fila.' }
     'logs' { Invoke-Remote 'journalctl -u eletrometry-consumer -u eletrometry-simulator -n 80 --no-pager -o short-iso; cloud-init status' }
@@ -219,3 +257,4 @@ PYCODE
         Assert-Exit 'Sessao SSM (este comando opcional requer Session Manager Plugin no PC)'
     }
 }
+

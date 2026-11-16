@@ -102,7 +102,7 @@ def main():
     write(RUNTIME,json.dumps(runtime))
     write('/etc/grafana/provisioning/datasources/eletrometry.yaml',yaml.safe_dump(datasource(runtime,CA.read_text()),sort_keys=False),0o640,'grafana')
     dashboard_path=Path('/var/lib/grafana/dashboards/eletrometry.json')
-    for name in ['eletrometry.json','visao-geral.json']:
+    for name in sorted(f.name for f in (SOURCE/'dashboards').glob('*.json')):
         write(dashboard_path.parent/name,(SOURCE/'dashboards'/name).read_text(),0o644)
     provider={'apiVersion':1,'providers':[{'name':'Eletrometry','orgId':1,'folder':'Eletrometry','type':'file',
         'disableDeletion':False,'allowUiUpdates':False,'updateIntervalSeconds':30,

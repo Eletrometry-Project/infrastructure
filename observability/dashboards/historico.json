@@ -1,0 +1,926 @@
+{
+  "id": null,
+  "uid": "eletrometry-historico",
+  "title": "04 · Gestor — histórico da cabine",
+  "version": 6,
+  "schemaVersion": 39,
+  "editable": false,
+  "tags": [
+    "eletrometry",
+    "entrega-v6",
+    "ingestao-lotes"
+  ],
+  "timezone": "browser",
+  "refresh": "",
+  "time": {
+    "from": "now-1h",
+    "to": "now"
+  },
+  "timepicker": {
+    "refresh_intervals": [
+      "30s",
+      "1m",
+      "5m"
+    ],
+    "time_options": [
+      "10m",
+      "1h",
+      "24h",
+      "7d",
+      "30d"
+    ]
+  },
+  "description": "Entrega v6 — cinco dashboards. Dados do RDS. Layout v3, painéis nativos. Regras provisórias em REGRAS-DASHBOARDS.md.",
+  "annotations": {
+    "list": []
+  },
+  "links": [
+    {
+      "title": "Analista",
+      "type": "link",
+      "url": "/d/eletrometry-visao-geral?${__url_time_range}&${cabine:queryparam}"
+    },
+    {
+      "title": "Gestor",
+      "type": "link",
+      "url": "/d/eletrometry-gestor?${__url_time_range}&${cabine:queryparam}"
+    },
+    {
+      "title": "Tendências",
+      "type": "link",
+      "url": "/d/eletrometry-tendencias?${__url_time_range}&${cabine:queryparam}"
+    },
+    {
+      "title": "Visão geral",
+      "type": "link",
+      "url": "/d/eletrometry-visao-geral?${__url_time_range}"
+    },
+    {
+      "title": "Detalhe operacional",
+      "type": "link",
+      "url": "/d/eletrometry-cabines?${cabine:queryparam}&${__url_time_range}"
+    },
+    {
+      "title": "10 min",
+      "type": "link",
+      "url": "/d/eletrometry-historico?from=now-10m&to=now&${cabine:queryparam}",
+      "targetBlank": false
+    },
+    {
+      "title": "1 hora",
+      "type": "link",
+      "url": "/d/eletrometry-historico?from=now-1h&to=now&${cabine:queryparam}",
+      "targetBlank": false
+    },
+    {
+      "title": "24 horas",
+      "type": "link",
+      "url": "/d/eletrometry-historico?from=now-24h&to=now&${cabine:queryparam}",
+      "targetBlank": false
+    },
+    {
+      "title": "1 semana",
+      "type": "link",
+      "url": "/d/eletrometry-historico?from=now-7d&to=now&${cabine:queryparam}",
+      "targetBlank": false
+    },
+    {
+      "title": "1 mês",
+      "type": "link",
+      "url": "/d/eletrometry-historico?from=now-30d&to=now&${cabine:queryparam}",
+      "targetBlank": false
+    }
+  ],
+  "panels": [
+    {
+      "id": 1,
+      "title": "Eventos confirmados",
+      "type": "stat",
+      "gridPos": {
+        "x": 0,
+        "y": 0,
+        "w": 6,
+        "h": 4
+      },
+      "description": "",
+      "datasource": {
+        "type": "mysql",
+        "uid": "eletrometry-mysql"
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "mysql",
+            "uid": "eletrometry-mysql"
+          },
+          "rawSql": "SELECT /*+ MAX_EXECUTION_TIME(15000) */ * FROM (WITH\nraw AS (SELECT * FROM leituras WHERE cabine_id = ${cabine:sqlstring} AND coletado_em >= FROM_UNIXTIME(${__from}/1000.0) - INTERVAL 60 SECOND AND coletado_em <= LEAST(FROM_UNIXTIME(${__to}/1000.0), UTC_TIMESTAMP(3))),\nphases AS (SELECT event_id,cabine_id,tipo,coletado_em,recebido_em,'A' fase,CASE WHEN qualidade_a='ok' THEN fase_a END valor FROM raw UNION ALL SELECT event_id,cabine_id,tipo,coletado_em,recebido_em,'B' fase,CASE WHEN qualidade_b='ok' THEN fase_b END valor FROM raw UNION ALL SELECT event_id,cabine_id,tipo,coletado_em,recebido_em,'C' fase,CASE WHEN qualidade_c='ok' THEN fase_c END valor FROM raw),\nlimits AS (\n SELECT *,UNIX_TIMESTAMP(coletado_em) ts,\n CASE WHEN tipo='temperatura' THEN 60 ELSE (CASE cabine_id WHEN 'cabine-001' THEN 600.0 WHEN 'cabine-002' THEN 600.0 WHEN 'cabine-003' THEN 600.0 ELSE 600.0 END)*0.66 END ideal,\n CASE WHEN tipo='temperatura' THEN 70 ELSE (CASE cabine_id WHEN 'cabine-001' THEN 600.0 WHEN 'cabine-002' THEN 600.0 WHEN 'cabine-003' THEN 600.0 ELSE 600.0 END)*0.759 END lim1,\n CASE WHEN tipo='temperatura' THEN 80 ELSE (CASE cabine_id WHEN 'cabine-001' THEN 600.0 WHEN 'cabine-002' THEN 600.0 WHEN 'cabine-003' THEN 600.0 ELSE 600.0 END)*0.8580000000000001 END lim2,\n CASE WHEN tipo='temperatura' THEN 90 ELSE (CASE cabine_id WHEN 'cabine-001' THEN 600.0 WHEN 'cabine-002' THEN 600.0 WHEN 'cabine-003' THEN 600.0 ELSE 600.0 END)*0.957 END lim3\n FROM phases\n),\nlevels AS (\n SELECT *,CASE WHEN valor IS NULL THEN NULL WHEN valor>=lim3 THEN 3 WHEN valor>=lim2 THEN 2 WHEN valor>=lim1 THEN 1 ELSE 0 END severity,\n AVG(valor) OVER (PARTITION BY cabine_id,tipo,fase ORDER BY ts RANGE BETWEEN 10 PRECEDING AND 1 PRECEDING) baseline,\n MAX(CASE WHEN tipo='temperatura' THEN valor END) OVER (PARTITION BY cabine_id,fase ORDER BY ts RANGE BETWEEN 5 PRECEDING AND CURRENT ROW) temp_recent,\n LAG(ts) OVER w prev_ts,LEAD(ts) OVER w next_ts,\n LEAD(valor) OVER w next_val,\n ROW_NUMBER() OVER (PARTITION BY cabine_id,tipo,fase ORDER BY ts DESC,event_id DESC) rn\n FROM limits WINDOW w AS (PARTITION BY cabine_id,tipo,fase ORDER BY ts,event_id)\n),\nflags AS (\n SELECT *,LAG(severity) OVER (PARTITION BY cabine_id,tipo,fase ORDER BY ts,event_id) prev_severity,\n CASE WHEN next_val IS NOT NULL AND valor IS NOT NULL AND next_ts-ts<=5\n THEN GREATEST(0,LEAST(next_ts,UNIX_TIMESTAMP(LEAST(FROM_UNIXTIME(${__to}/1000.0), UTC_TIMESTAMP(3))))-GREATEST(ts,UNIX_TIMESTAMP(FROM_UNIXTIME(${__from}/1000.0)))) ELSE 0 END dt\n FROM levels\n),\ngroups_ AS (\n SELECT *,SUM(CASE WHEN severity>0 AND (COALESCE(prev_severity,0)=0 OR ts-prev_ts>5) THEN 1 ELSE 0 END)\n OVER (PARTITION BY cabine_id,tipo,fase ORDER BY ts,event_id) grp\n FROM flags\n),\nmarked AS (\n SELECT *,MIN(CASE WHEN severity>0 THEN ts END) OVER (PARTITION BY cabine_id,tipo,fase,grp) event_start\n FROM groups_\n),\nevent_groups AS (\n SELECT cabine_id,tipo,fase,grp,MIN(ts) first_ts,MAX(ts) last_ts,MAX(severity) severity,\n MAX(valor) peak,\n MIN(CASE WHEN ts-event_start>=10 OR (baseline>0 AND valor>=baseline*1.2 AND temp_recent>=70) THEN ts END) confirmed_ts,\n SUM(CASE WHEN severity=3 THEN dt ELSE 0 END) critical_seconds\n FROM marked WHERE severity>0 GROUP BY cabine_id,tipo,fase,grp\n),\nevents AS (\n SELECT * FROM event_groups WHERE confirmed_ts IS NOT NULL AND last_ts>=UNIX_TIMESTAMP(FROM_UNIXTIME(${__from}/1000.0))\n),\nlatest AS (SELECT * FROM levels WHERE rn=1 AND coletado_em>=FROM_UNIXTIME(${__from}/1000.0))\n\nSELECT COUNT(*) total,COALESCE(SUM(severity=3),0) criticos,\n COALESCE(SUM(severity=2),0) moderados,COALESCE(SUM(severity=1),0) atencao\nFROM events) bounded_query",
+          "format": "table",
+          "editorMode": "code",
+          "rawQuery": true
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "decimals": 0,
+          "noValue": "Sem dados",
+          "color": {
+            "mode": "fixed",
+            "fixedColor": "text"
+          },
+          "mappings": []
+        },
+        "overrides": []
+      },
+      "options": {
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "/.*/",
+          "values": false
+        },
+        "colorMode": "value",
+        "graphMode": "none",
+        "textMode": "value",
+        "justifyMode": "center",
+        "orientation": "auto",
+        "wideLayout": false,
+        "text": {
+          "valueSize": 26,
+          "titleSize": 12
+        }
+      },
+      "pluginVersion": "12.2.0",
+      "transformations": [
+        {
+          "id": "filterFieldsByName",
+          "options": {
+            "include": {
+              "names": [
+                "total"
+              ]
+            }
+          }
+        },
+        {
+          "id": "organize",
+          "options": {
+            "indexByName": {
+              "total": 0
+            }
+          }
+        }
+      ]
+    },
+    {
+      "id": 2,
+      "title": "Críticos",
+      "type": "stat",
+      "gridPos": {
+        "x": 6,
+        "y": 0,
+        "w": 6,
+        "h": 4
+      },
+      "description": "",
+      "datasource": {
+        "type": "datasource",
+        "uid": "-- Dashboard --"
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "datasource",
+            "uid": "-- Dashboard --"
+          },
+          "panelId": 1,
+          "withTransforms": false
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "decimals": 0,
+          "noValue": "Sem dados",
+          "color": {
+            "mode": "fixed",
+            "fixedColor": "text"
+          },
+          "mappings": []
+        },
+        "overrides": []
+      },
+      "options": {
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "/.*/",
+          "values": false
+        },
+        "colorMode": "value",
+        "graphMode": "none",
+        "textMode": "value",
+        "justifyMode": "center",
+        "orientation": "auto",
+        "wideLayout": false,
+        "text": {
+          "valueSize": 28,
+          "titleSize": 12
+        }
+      },
+      "pluginVersion": "12.2.0",
+      "transformations": [
+        {
+          "id": "filterFieldsByName",
+          "options": {
+            "include": {
+              "names": [
+                "criticos"
+              ]
+            }
+          }
+        },
+        {
+          "id": "organize",
+          "options": {
+            "indexByName": {
+              "criticos": 0
+            }
+          }
+        }
+      ]
+    },
+    {
+      "id": 3,
+      "title": "Moderados",
+      "type": "stat",
+      "gridPos": {
+        "x": 12,
+        "y": 0,
+        "w": 6,
+        "h": 4
+      },
+      "description": "",
+      "datasource": {
+        "type": "datasource",
+        "uid": "-- Dashboard --"
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "datasource",
+            "uid": "-- Dashboard --"
+          },
+          "panelId": 1,
+          "withTransforms": false
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "decimals": 0,
+          "noValue": "Sem dados",
+          "color": {
+            "mode": "fixed",
+            "fixedColor": "text"
+          },
+          "mappings": []
+        },
+        "overrides": []
+      },
+      "options": {
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "/.*/",
+          "values": false
+        },
+        "colorMode": "value",
+        "graphMode": "none",
+        "textMode": "value",
+        "justifyMode": "center",
+        "orientation": "auto",
+        "wideLayout": false,
+        "text": {
+          "valueSize": 28,
+          "titleSize": 12
+        }
+      },
+      "pluginVersion": "12.2.0",
+      "transformations": [
+        {
+          "id": "filterFieldsByName",
+          "options": {
+            "include": {
+              "names": [
+                "moderados"
+              ]
+            }
+          }
+        },
+        {
+          "id": "organize",
+          "options": {
+            "indexByName": {
+              "moderados": 0
+            }
+          }
+        }
+      ]
+    },
+    {
+      "id": 4,
+      "title": "Em atenção",
+      "type": "stat",
+      "gridPos": {
+        "x": 18,
+        "y": 0,
+        "w": 6,
+        "h": 4
+      },
+      "description": "",
+      "datasource": {
+        "type": "datasource",
+        "uid": "-- Dashboard --"
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "datasource",
+            "uid": "-- Dashboard --"
+          },
+          "panelId": 1,
+          "withTransforms": false
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "decimals": 0,
+          "noValue": "Sem dados",
+          "color": {
+            "mode": "fixed",
+            "fixedColor": "text"
+          },
+          "mappings": []
+        },
+        "overrides": []
+      },
+      "options": {
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "/.*/",
+          "values": false
+        },
+        "colorMode": "value",
+        "graphMode": "none",
+        "textMode": "value",
+        "justifyMode": "center",
+        "orientation": "auto",
+        "wideLayout": false,
+        "text": {
+          "valueSize": 28,
+          "titleSize": 12
+        }
+      },
+      "pluginVersion": "12.2.0",
+      "transformations": [
+        {
+          "id": "filterFieldsByName",
+          "options": {
+            "include": {
+              "names": [
+                "atencao"
+              ]
+            }
+          }
+        },
+        {
+          "id": "organize",
+          "options": {
+            "indexByName": {
+              "atencao": 0
+            }
+          }
+        }
+      ]
+    },
+    {
+      "id": 6,
+      "title": "Corrente e temperatura por fase",
+      "type": "timeseries",
+      "gridPos": {
+        "x": 0,
+        "y": 4,
+        "w": 24,
+        "h": 11
+      },
+      "description": "Regras: REGRAS-DASHBOARDS.md",
+      "datasource": {
+        "type": "mysql",
+        "uid": "eletrometry-mysql"
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "mysql",
+            "uid": "eletrometry-mysql"
+          },
+          "rawSql": "SELECT /*+ MAX_EXECUTION_TIME(15000) */ * FROM (SELECT $__timeGroupAlias(coletado_em,'$__interval',NULL),\n AVG(CASE WHEN tipo='corrente' AND qualidade_a='ok' THEN fase_a END) `Corr A`,\n AVG(CASE WHEN tipo='corrente' AND qualidade_b='ok' THEN fase_b END) `Corr B`,\n AVG(CASE WHEN tipo='corrente' AND qualidade_c='ok' THEN fase_c END) `Corr C`,\n AVG(CASE WHEN tipo='temperatura' AND qualidade_a='ok' THEN fase_a END) `Temp A`,\n AVG(CASE WHEN tipo='temperatura' AND qualidade_b='ok' THEN fase_b END) `Temp B`,\n AVG(CASE WHEN tipo='temperatura' AND qualidade_c='ok' THEN fase_c END) `Temp C`\n FROM leituras WHERE cabine_id = ${cabine:sqlstring} AND $__timeFilter(coletado_em) GROUP BY 1 ORDER BY 1) bounded_query ORDER BY `time`",
+          "format": "time_series",
+          "editorMode": "code",
+          "rawQuery": true
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "amp",
+          "decimals": 1,
+          "noValue": "Sem dados",
+          "color": {
+            "mode": "fixed",
+            "fixedColor": "#FF9800"
+          },
+          "mappings": [],
+          "custom": {
+            "drawStyle": "line",
+            "lineWidth": 2,
+            "fillOpacity": 0,
+            "spanNulls": false,
+            "showPoints": "auto",
+            "pointSize": 4,
+            "axisBorderShow": false,
+            "axisCenteredZero": false
+          }
+        },
+        "overrides": [
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Temp A"
+            },
+            "properties": [
+              {
+                "id": "unit",
+                "value": "celsius"
+              },
+              {
+                "id": "color",
+                "value": {
+                  "mode": "fixed",
+                  "fixedColor": "#FF9800"
+                }
+              },
+              {
+                "id": "custom.axisPlacement",
+                "value": "right"
+              },
+              {
+                "id": "custom.axisLabel",
+                "value": "Temperatura (°C)"
+              },
+              {
+                "id": "custom.lineStyle",
+                "value": {
+                  "fill": "solid",
+                  "dash": [
+                    8,
+                    5
+                  ]
+                }
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Corr A"
+            },
+            "properties": [
+              {
+                "id": "unit",
+                "value": "amp"
+              },
+              {
+                "id": "color",
+                "value": {
+                  "mode": "fixed",
+                  "fixedColor": "#FF9800"
+                }
+              },
+              {
+                "id": "custom.axisPlacement",
+                "value": "left"
+              },
+              {
+                "id": "custom.axisLabel",
+                "value": "Corrente (A)"
+              },
+              {
+                "id": "custom.lineStyle",
+                "value": {
+                  "fill": "dash",
+                  "dash": [
+                    8,
+                    5
+                  ]
+                }
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Temp B"
+            },
+            "properties": [
+              {
+                "id": "unit",
+                "value": "celsius"
+              },
+              {
+                "id": "color",
+                "value": {
+                  "mode": "fixed",
+                  "fixedColor": "#3486FF"
+                }
+              },
+              {
+                "id": "custom.axisPlacement",
+                "value": "right"
+              },
+              {
+                "id": "custom.axisLabel",
+                "value": "Temperatura (°C)"
+              },
+              {
+                "id": "custom.lineStyle",
+                "value": {
+                  "fill": "solid",
+                  "dash": [
+                    8,
+                    5
+                  ]
+                }
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Corr B"
+            },
+            "properties": [
+              {
+                "id": "unit",
+                "value": "amp"
+              },
+              {
+                "id": "color",
+                "value": {
+                  "mode": "fixed",
+                  "fixedColor": "#3486FF"
+                }
+              },
+              {
+                "id": "custom.axisPlacement",
+                "value": "left"
+              },
+              {
+                "id": "custom.axisLabel",
+                "value": "Corrente (A)"
+              },
+              {
+                "id": "custom.lineStyle",
+                "value": {
+                  "fill": "dash",
+                  "dash": [
+                    8,
+                    5
+                  ]
+                }
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Temp C"
+            },
+            "properties": [
+              {
+                "id": "unit",
+                "value": "celsius"
+              },
+              {
+                "id": "color",
+                "value": {
+                  "mode": "fixed",
+                  "fixedColor": "#9865FF"
+                }
+              },
+              {
+                "id": "custom.axisPlacement",
+                "value": "right"
+              },
+              {
+                "id": "custom.axisLabel",
+                "value": "Temperatura (°C)"
+              },
+              {
+                "id": "custom.lineStyle",
+                "value": {
+                  "fill": "solid",
+                  "dash": [
+                    8,
+                    5
+                  ]
+                }
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Corr C"
+            },
+            "properties": [
+              {
+                "id": "unit",
+                "value": "amp"
+              },
+              {
+                "id": "color",
+                "value": {
+                  "mode": "fixed",
+                  "fixedColor": "#9865FF"
+                }
+              },
+              {
+                "id": "custom.axisPlacement",
+                "value": "left"
+              },
+              {
+                "id": "custom.axisLabel",
+                "value": "Corrente (A)"
+              },
+              {
+                "id": "custom.lineStyle",
+                "value": {
+                  "fill": "dash",
+                  "dash": [
+                    8,
+                    5
+                  ]
+                }
+              }
+            ]
+          }
+        ]
+      },
+      "options": {
+        "legend": {
+          "displayMode": "list",
+          "placement": "bottom",
+          "calcs": []
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "none"
+        }
+      },
+      "pluginVersion": "12.2.0",
+      "maxDataPoints": 700,
+      "interval": "1s"
+    },
+    {
+      "id": 7,
+      "title": "Eventos confirmados por hora",
+      "type": "timeseries",
+      "gridPos": {
+        "x": 0,
+        "y": 15,
+        "w": 24,
+        "h": 8
+      },
+      "description": "Contagem por hora de confirmação. Cada evento pertence a cabine, tipo e fase; classe = maior severidade observada. Eventos confirmados antes do início não entram neste gráfico.",
+      "datasource": {
+        "type": "mysql",
+        "uid": "eletrometry-mysql"
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "mysql",
+            "uid": "eletrometry-mysql"
+          },
+          "rawSql": "SELECT /*+ MAX_EXECUTION_TIME(15000) */ * FROM (WITH\nraw AS (SELECT * FROM leituras WHERE cabine_id = ${cabine:sqlstring} AND coletado_em >= FROM_UNIXTIME(${__from}/1000.0) - INTERVAL 60 SECOND AND coletado_em <= LEAST(FROM_UNIXTIME(${__to}/1000.0), UTC_TIMESTAMP(3))),\nphases AS (SELECT event_id,cabine_id,tipo,coletado_em,recebido_em,'A' fase,CASE WHEN qualidade_a='ok' THEN fase_a END valor FROM raw UNION ALL SELECT event_id,cabine_id,tipo,coletado_em,recebido_em,'B' fase,CASE WHEN qualidade_b='ok' THEN fase_b END valor FROM raw UNION ALL SELECT event_id,cabine_id,tipo,coletado_em,recebido_em,'C' fase,CASE WHEN qualidade_c='ok' THEN fase_c END valor FROM raw),\nlimits AS (\n SELECT *,UNIX_TIMESTAMP(coletado_em) ts,\n CASE WHEN tipo='temperatura' THEN 60 ELSE (CASE cabine_id WHEN 'cabine-001' THEN 600.0 WHEN 'cabine-002' THEN 600.0 WHEN 'cabine-003' THEN 600.0 ELSE 600.0 END)*0.66 END ideal,\n CASE WHEN tipo='temperatura' THEN 70 ELSE (CASE cabine_id WHEN 'cabine-001' THEN 600.0 WHEN 'cabine-002' THEN 600.0 WHEN 'cabine-003' THEN 600.0 ELSE 600.0 END)*0.759 END lim1,\n CASE WHEN tipo='temperatura' THEN 80 ELSE (CASE cabine_id WHEN 'cabine-001' THEN 600.0 WHEN 'cabine-002' THEN 600.0 WHEN 'cabine-003' THEN 600.0 ELSE 600.0 END)*0.8580000000000001 END lim2,\n CASE WHEN tipo='temperatura' THEN 90 ELSE (CASE cabine_id WHEN 'cabine-001' THEN 600.0 WHEN 'cabine-002' THEN 600.0 WHEN 'cabine-003' THEN 600.0 ELSE 600.0 END)*0.957 END lim3\n FROM phases\n),\nlevels AS (\n SELECT *,CASE WHEN valor IS NULL THEN NULL WHEN valor>=lim3 THEN 3 WHEN valor>=lim2 THEN 2 WHEN valor>=lim1 THEN 1 ELSE 0 END severity,\n AVG(valor) OVER (PARTITION BY cabine_id,tipo,fase ORDER BY ts RANGE BETWEEN 10 PRECEDING AND 1 PRECEDING) baseline,\n MAX(CASE WHEN tipo='temperatura' THEN valor END) OVER (PARTITION BY cabine_id,fase ORDER BY ts RANGE BETWEEN 5 PRECEDING AND CURRENT ROW) temp_recent,\n LAG(ts) OVER w prev_ts,LEAD(ts) OVER w next_ts,\n LEAD(valor) OVER w next_val,\n ROW_NUMBER() OVER (PARTITION BY cabine_id,tipo,fase ORDER BY ts DESC,event_id DESC) rn\n FROM limits WINDOW w AS (PARTITION BY cabine_id,tipo,fase ORDER BY ts,event_id)\n),\nflags AS (\n SELECT *,LAG(severity) OVER (PARTITION BY cabine_id,tipo,fase ORDER BY ts,event_id) prev_severity,\n CASE WHEN next_val IS NOT NULL AND valor IS NOT NULL AND next_ts-ts<=5\n THEN GREATEST(0,LEAST(next_ts,UNIX_TIMESTAMP(LEAST(FROM_UNIXTIME(${__to}/1000.0), UTC_TIMESTAMP(3))))-GREATEST(ts,UNIX_TIMESTAMP(FROM_UNIXTIME(${__from}/1000.0)))) ELSE 0 END dt\n FROM levels\n),\ngroups_ AS (\n SELECT *,SUM(CASE WHEN severity>0 AND (COALESCE(prev_severity,0)=0 OR ts-prev_ts>5) THEN 1 ELSE 0 END)\n OVER (PARTITION BY cabine_id,tipo,fase ORDER BY ts,event_id) grp\n FROM flags\n),\nmarked AS (\n SELECT *,MIN(CASE WHEN severity>0 THEN ts END) OVER (PARTITION BY cabine_id,tipo,fase,grp) event_start\n FROM groups_\n),\nevent_groups AS (\n SELECT cabine_id,tipo,fase,grp,MIN(ts) first_ts,MAX(ts) last_ts,MAX(severity) severity,\n MAX(valor) peak,\n MIN(CASE WHEN ts-event_start>=10 OR (baseline>0 AND valor>=baseline*1.2 AND temp_recent>=70) THEN ts END) confirmed_ts,\n SUM(CASE WHEN severity=3 THEN dt ELSE 0 END) critical_seconds\n FROM marked WHERE severity>0 GROUP BY cabine_id,tipo,fase,grp\n),\nevents AS (\n SELECT * FROM event_groups WHERE confirmed_ts IS NOT NULL AND last_ts>=UNIX_TIMESTAMP(FROM_UNIXTIME(${__from}/1000.0))\n),\nlatest AS (SELECT * FROM levels WHERE rn=1 AND coletado_em>=FROM_UNIXTIME(${__from}/1000.0))\n\nSELECT FROM_UNIXTIME(FLOOR(confirmed_ts/3600)*3600) time,\n SUM(severity=3) Criticos,SUM(severity=2) Moderados,SUM(severity=1) Atencao\nFROM events WHERE confirmed_ts>=UNIX_TIMESTAMP(FROM_UNIXTIME(${__from}/1000.0))\nGROUP BY 1 ORDER BY 1) bounded_query ORDER BY `time`",
+          "format": "time_series",
+          "editorMode": "code",
+          "rawQuery": true
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "decimals": 0,
+          "noValue": "Sem dados",
+          "color": {
+            "mode": "fixed",
+            "fixedColor": "text"
+          },
+          "mappings": [],
+          "custom": {
+            "drawStyle": "bars",
+            "fillOpacity": 80,
+            "lineWidth": 0,
+            "stacking": {
+              "mode": "normal",
+              "group": "A"
+            }
+          }
+        },
+        "overrides": [
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Criticos"
+            },
+            "properties": [
+              {
+                "id": "color",
+                "value": {
+                  "mode": "fixed",
+                  "fixedColor": "red"
+                }
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Moderados"
+            },
+            "properties": [
+              {
+                "id": "color",
+                "value": {
+                  "mode": "fixed",
+                  "fixedColor": "orange"
+                }
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Atencao"
+            },
+            "properties": [
+              {
+                "id": "color",
+                "value": {
+                  "mode": "fixed",
+                  "fixedColor": "yellow"
+                }
+              }
+            ]
+          }
+        ]
+      },
+      "options": {
+        "legend": {
+          "displayMode": "list",
+          "placement": "bottom"
+        },
+        "tooltip": {
+          "mode": "multi"
+        }
+      },
+      "pluginVersion": "12.2.0"
+    },
+    {
+      "id": 8,
+      "title": "Histórico de ocorrências · até 500 eventos",
+      "type": "table",
+      "gridPos": {
+        "x": 0,
+        "y": 23,
+        "w": 24,
+        "h": 12
+      },
+      "description": "Eventos reconstruídos das leituras. Início pode estar truncado pelo período e sua margem de 60s. Última leitura não significa reparo ou fechamento. Use o seletor temporal para consultar períodos menores.",
+      "datasource": {
+        "type": "mysql",
+        "uid": "eletrometry-mysql"
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "mysql",
+            "uid": "eletrometry-mysql"
+          },
+          "rawSql": "SELECT /*+ MAX_EXECUTION_TIME(15000) */ * FROM (WITH\nraw AS (SELECT * FROM leituras WHERE cabine_id = ${cabine:sqlstring} AND coletado_em >= FROM_UNIXTIME(${__from}/1000.0) - INTERVAL 60 SECOND AND coletado_em <= LEAST(FROM_UNIXTIME(${__to}/1000.0), UTC_TIMESTAMP(3))),\nphases AS (SELECT event_id,cabine_id,tipo,coletado_em,recebido_em,'A' fase,CASE WHEN qualidade_a='ok' THEN fase_a END valor FROM raw UNION ALL SELECT event_id,cabine_id,tipo,coletado_em,recebido_em,'B' fase,CASE WHEN qualidade_b='ok' THEN fase_b END valor FROM raw UNION ALL SELECT event_id,cabine_id,tipo,coletado_em,recebido_em,'C' fase,CASE WHEN qualidade_c='ok' THEN fase_c END valor FROM raw),\nlimits AS (\n SELECT *,UNIX_TIMESTAMP(coletado_em) ts,\n CASE WHEN tipo='temperatura' THEN 60 ELSE (CASE cabine_id WHEN 'cabine-001' THEN 600.0 WHEN 'cabine-002' THEN 600.0 WHEN 'cabine-003' THEN 600.0 ELSE 600.0 END)*0.66 END ideal,\n CASE WHEN tipo='temperatura' THEN 70 ELSE (CASE cabine_id WHEN 'cabine-001' THEN 600.0 WHEN 'cabine-002' THEN 600.0 WHEN 'cabine-003' THEN 600.0 ELSE 600.0 END)*0.759 END lim1,\n CASE WHEN tipo='temperatura' THEN 80 ELSE (CASE cabine_id WHEN 'cabine-001' THEN 600.0 WHEN 'cabine-002' THEN 600.0 WHEN 'cabine-003' THEN 600.0 ELSE 600.0 END)*0.8580000000000001 END lim2,\n CASE WHEN tipo='temperatura' THEN 90 ELSE (CASE cabine_id WHEN 'cabine-001' THEN 600.0 WHEN 'cabine-002' THEN 600.0 WHEN 'cabine-003' THEN 600.0 ELSE 600.0 END)*0.957 END lim3\n FROM phases\n),\nlevels AS (\n SELECT *,CASE WHEN valor IS NULL THEN NULL WHEN valor>=lim3 THEN 3 WHEN valor>=lim2 THEN 2 WHEN valor>=lim1 THEN 1 ELSE 0 END severity,\n AVG(valor) OVER (PARTITION BY cabine_id,tipo,fase ORDER BY ts RANGE BETWEEN 10 PRECEDING AND 1 PRECEDING) baseline,\n MAX(CASE WHEN tipo='temperatura' THEN valor END) OVER (PARTITION BY cabine_id,fase ORDER BY ts RANGE BETWEEN 5 PRECEDING AND CURRENT ROW) temp_recent,\n LAG(ts) OVER w prev_ts,LEAD(ts) OVER w next_ts,\n LEAD(valor) OVER w next_val,\n ROW_NUMBER() OVER (PARTITION BY cabine_id,tipo,fase ORDER BY ts DESC,event_id DESC) rn\n FROM limits WINDOW w AS (PARTITION BY cabine_id,tipo,fase ORDER BY ts,event_id)\n),\nflags AS (\n SELECT *,LAG(severity) OVER (PARTITION BY cabine_id,tipo,fase ORDER BY ts,event_id) prev_severity,\n CASE WHEN next_val IS NOT NULL AND valor IS NOT NULL AND next_ts-ts<=5\n THEN GREATEST(0,LEAST(next_ts,UNIX_TIMESTAMP(LEAST(FROM_UNIXTIME(${__to}/1000.0), UTC_TIMESTAMP(3))))-GREATEST(ts,UNIX_TIMESTAMP(FROM_UNIXTIME(${__from}/1000.0)))) ELSE 0 END dt\n FROM levels\n),\ngroups_ AS (\n SELECT *,SUM(CASE WHEN severity>0 AND (COALESCE(prev_severity,0)=0 OR ts-prev_ts>5) THEN 1 ELSE 0 END)\n OVER (PARTITION BY cabine_id,tipo,fase ORDER BY ts,event_id) grp\n FROM flags\n),\nmarked AS (\n SELECT *,MIN(CASE WHEN severity>0 THEN ts END) OVER (PARTITION BY cabine_id,tipo,fase,grp) event_start\n FROM groups_\n),\nevent_groups AS (\n SELECT cabine_id,tipo,fase,grp,MIN(ts) first_ts,MAX(ts) last_ts,MAX(severity) severity,\n MAX(valor) peak,\n MIN(CASE WHEN ts-event_start>=10 OR (baseline>0 AND valor>=baseline*1.2 AND temp_recent>=70) THEN ts END) confirmed_ts,\n SUM(CASE WHEN severity=3 THEN dt ELSE 0 END) critical_seconds\n FROM marked WHERE severity>0 GROUP BY cabine_id,tipo,fase,grp\n),\nevents AS (\n SELECT * FROM event_groups WHERE confirmed_ts IS NOT NULL AND last_ts>=UNIX_TIMESTAMP(FROM_UNIXTIME(${__from}/1000.0))\n),\nlatest AS (SELECT * FROM levels WHERE rn=1 AND coletado_em>=FROM_UNIXTIME(${__from}/1000.0))\n\nSELECT FROM_UNIXTIME(confirmed_ts) Confirmado,tipo Tipo,fase Fase,\n CASE severity WHEN 3 THEN 'Crítico' WHEN 2 THEN 'Moderado' ELSE 'Atenção' END Nivel,\n peak Maximo,CASE tipo WHEN 'temperatura' THEN '°C' ELSE 'A' END Unidade,\n FROM_UNIXTIME(first_ts) Inicio_observado,FROM_UNIXTIME(last_ts) Ultima_leitura\nFROM events ORDER BY confirmed_ts DESC LIMIT 500) bounded_query",
+          "format": "table",
+          "editorMode": "code",
+          "rawQuery": true
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "decimals": 1,
+          "noValue": "Sem dados",
+          "color": {
+            "mode": "fixed",
+            "fixedColor": "text"
+          },
+          "mappings": [],
+          "custom": {
+            "filterable": true
+          }
+        },
+        "overrides": [
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Confirmado"
+            },
+            "properties": [
+              {
+                "id": "unit",
+                "value": "dateTimeAsIso"
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Inicio_observado"
+            },
+            "properties": [
+              {
+                "id": "unit",
+                "value": "dateTimeAsIso"
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Ultima_leitura"
+            },
+            "properties": [
+              {
+                "id": "unit",
+                "value": "dateTimeAsIso"
+              }
+            ]
+          }
+        ]
+      },
+      "options": {
+        "showHeader": true,
+        "cellHeight": "sm",
+        "enablePagination": true
+      },
+      "pluginVersion": "12.2.0"
+    }
+  ],
+  "templating": {
+    "list": [
+      {
+        "name": "cabine",
+        "label": "Cabine",
+        "type": "query",
+        "datasource": {
+          "type": "mysql",
+          "uid": "eletrometry-mysql"
+        },
+        "query": "SELECT cabine_id AS __text,cabine_id AS __value FROM (SELECT 'cabine-001' AS cabine_id UNION SELECT 'cabine-002' AS cabine_id UNION SELECT 'cabine-003' AS cabine_id UNION SELECT DISTINCT cabine_id FROM leituras) c ORDER BY cabine_id",
+        "definition": "SELECT cabine_id AS __text,cabine_id AS __value FROM (SELECT 'cabine-001' AS cabine_id UNION SELECT 'cabine-002' AS cabine_id UNION SELECT 'cabine-003' AS cabine_id UNION SELECT DISTINCT cabine_id FROM leituras) c ORDER BY cabine_id",
+        "refresh": 1,
+        "multi": false,
+        "includeAll": false,
+        "sort": 1,
+        "current": {
+          "text": "cabine-001",
+          "value": "cabine-001"
+        },
+        "options": []
+      }
+    ]
+  }
+}

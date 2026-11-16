@@ -4,7 +4,7 @@
 
 Use o procedimento do README: copie somente `lab.ps1` e `app-bundle.tar.gz` para a pasta
 original que contem o state. Execute `atualizar`, `simular` e `status`.
-Essa rota modifica a aplicacao na EC2 existente por SSM, mantem o banco e inicia o simulador continuo.
+Essa rota modifica a aplicacao na EC2 existente por SSM, mantem o banco e preserva o estado anterior do simulador continuo; o consumidor e reiniciado.
 Nao exige novo apply. Uma breve pausa do consumidor durante a instalacao e esperada; a SQS mantem mensagens.
 Atualizar nao redefine senhas nem cria tabelas. Se a instalacao inicial nao terminou, consulte logs primeiro.
 A API de atualizacao permite comandos no servidor usando as permissoes ja fornecidas pelo Lab.

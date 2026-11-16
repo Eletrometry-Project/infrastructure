@@ -1,8 +1,13 @@
 > Revisão do instalador de dashboards: leia `REVISAO-INSTALADOR.md`. A detecção reportada no Defender ainda não foi reproduzida ou resolvida de forma confirmada.
 
+**Portal React na AWS** · A revisão instala o frontend em Docker numa EC2 dedicada. Execute `.\lab.ps1 subir` na pasta do state e abra o IP HTTPS indicado. Para atualização, certificado e cadastro, veja [PORTAL-AWS.md](PORTAL-AWS.md).
+
+
+> Atualização de desempenho: consulte **MELHORIA-DESEMPENHO.md**. Esta revisão inclui ingestão em lotes e exige `lab.ps1 atualizar`, além de `lab.ps1 dashboards`.
+
 # Eletrometry integrado — consumidor, Grafana e Neo4j
 
-Agora há **um único Terraform**, na pasta `infra`, para provisionar todo o laboratório. Em um ambiente novo, `terraform apply` cria os recursos e entrega os instaladores no user-data das EC2; o cloud-init inicia os serviços automaticamente. Não é preciso executar o antigo instalador Grafana separadamente.
+Agora há **um único Terraform**, na pasta `infra`, para provisionar todo o laboratório. Em um ambiente novo, `terraform apply` cria as três EC2. O cloud-init prepara a coleta e a observabilidade. O comando `lab.ps1 subir` completa a publicação das dashboards e do contêiner de frontend por SSM. Não é preciso executar o antigo instalador Grafana separadamente.
 
 ## Já tenho Grafana funcionando: dashboards
 
@@ -14,7 +19,8 @@ Siga `ATUALIZAR-DASHBOARDS.md`: copie o código sobre a pasta original preservan
 | --- | --- |
 | EC2 `eletrometry-lab-consumer` — t3.micro | Simulador e consumidor SQS |
 | RDS MySQL | Banco `eletrometry`, tabela `leituras` |
-| EC2 `eletrometry-lab-paineis` — t3.medium, 4 GiB | Grafana e Neo4j Community em Docker |
+| EC2 `eletrometry-lab-paineis` — t3.medium, 4 GiB | Grafana como serviço e Neo4j Community em Docker |
+| EC2 `eletrometry-lab-frontend` — t3.micro | Portal React em Docker, HTTPS pelo Elastic IP e acesso privado ao Grafana |
 | Application Load Balancer | Acesso HTTP ao Grafana |
 | Elastic IP da EC2 dos painéis | Neo4j Browser na porta 7474 e Bolt na 7687 |
 
@@ -70,6 +76,8 @@ terraform init
 terraform plan -out=integrado.tfplan
 terraform apply integrado.tfplan
 cd ..
+.\lab.ps1 dashboards
+.\lab.ps1 portal
 ```
 
 **`Apply complete` confirma a criação dos recursos, não a conclusão das instalações dentro das EC2.** Aguarde e use os comandos abaixo. Em uma atualização com state antigo do Grafana, prefira `lab.ps1 subir`, que faz a consolidação antes do plano.

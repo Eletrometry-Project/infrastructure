@@ -24,16 +24,16 @@ locals {
     "001-schema.sql"                = { path = "/opt/eletrometry-package/sql/001-schema.sql", mode = "0644", content = file("${path.module}/../sql/001-schema.sql") }
     "runtime.json"                  = { path = "/opt/eletrometry-package/runtime.json", mode = "0644", content = local.runtime_config }
   }
-  cloud_init = "#cloud-config\n${yamlencode({
+  cloud_init = "#cloud-config\n${jsonencode({
     write_files = [for item in local.bootstrap_files : {
       path        = item.path
       permissions = item.mode
       owner       = "root:root"
-      encoding    = "b64"
-      content     = base64encode(item.content)
+      content     = item.content
     }]
     runcmd = [["bash", "/opt/eletrometry-package/deploy/install.sh", "/opt/eletrometry-package/runtime.json"]]
   })}"
+  consumer_user_data = base64gzip(local.cloud_init)
 }
 
 resource "aws_instance" "consumer" {
@@ -44,10 +44,14 @@ resource "aws_instance" "consumer" {
   vpc_security_group_ids      = local.consumer_sg_ids
   key_name                    = local.consumer_key_name
   iam_instance_profile        = local.instance_profile_name
-  user_data_base64            = base64gzip(local.cloud_init)
+  user_data_base64            = local.consumer_user_data
   user_data_replace_on_change = true
   lifecycle {
     ignore_changes = [ami, user_data_base64]
+    precondition {
+      condition     = floor(length(trim(local.consumer_user_data, "=")) * 3 / 4) <= 16384
+      error_message = "O bootstrap comprimido da EC2 consumer excede 16384 bytes. Reduza o cloud-config antes de criar a instancia."
+    }
   }
   metadata_options {
     http_endpoint               = "enabled"

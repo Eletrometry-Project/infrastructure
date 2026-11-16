@@ -4,6 +4,7 @@ import runpy
 import tarfile
 root=Path(__file__).resolve().parents[1]
 runpy.run_path(str(root/'observability/build_dashboard.py'),run_name='__main__')
+runpy.run_path(str(root/'observability/build_management.py'),run_name='__main__')
 with tarfile.open(root/'observability-bundle.tar.gz','w:gz') as archive:
     for p in sorted((root/'observability').rglob('*')):
         if p.is_file() and '__pycache__' not in p.parts:
@@ -11,3 +12,5 @@ with tarfile.open(root/'observability-bundle.tar.gz','w:gz') as archive:
 print('observability-bundle.tar.gz pronto')
 
 # lab.ps1 dashboards usa diretamente os JSONs e o instalador em texto.
+
+runpy.run_path(str(root/'scripts/build_panel_bootstrap.py'),run_name='__main__')

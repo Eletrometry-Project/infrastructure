@@ -64,7 +64,8 @@ class TelemetryIntegrationTests(unittest.TestCase):
         db = MagicMock()
         with patch.object(remote, 'database', return_value=db), patch.object(remote, 'query', return_value=[]) as query:
             self.assertEqual(remote.verify_run({'db_host': 'test'}, 'new-run', {'id': ('cabine-001','corrente')}, wait=0), 1)
-        self.assertEqual(query.call_args.args[2], ('new-run',))
+        self.assertEqual(query.call_args.args[2], ('id', 'new-run'))
+        self.assertIn('event_id IN (%s)', query.call_args.args[1])
         db.close.assert_called_once()
 
     def test_empty_expected_never_passes(self):
@@ -73,11 +74,30 @@ class TelemetryIntegrationTests(unittest.TestCase):
 
     def test_success_report_uses_exact_run_and_counts(self):
         with tempfile.TemporaryDirectory() as directory:
-            with patch.object(remote, 'STATE', Path(directory)), patch.object(remote, 'database', return_value=MagicMock()), patch.object(remote, 'query', return_value=[('id','cabine-001','corrente')]):
+            with patch.object(remote, 'STATE', Path(directory)), patch.object(remote, 'database', return_value=MagicMock()), patch.object(remote, 'query', return_value=[('id','cabine-001','corrente',1.25)]):
                 self.assertEqual(remote.verify_run({'db_host':'test'}, 'run1', {'id':('cabine-001','corrente')}, 0), 0)
             report = json.loads((Path(directory)/'latest-check.json').read_text())
             self.assertEqual(report['run_id'], 'run1')
             self.assertEqual(report['actual'], 1)
+
+    def test_continuous_simulator_resumes_after_failure(self):
+        with patch.object(remote, 'service', return_value='active'), patch.object(remote.subprocess, 'run') as run:
+            with self.assertRaises(RuntimeError):
+                with remote.isolated_simulation():
+                    raise RuntimeError('failed test')
+            self.assertEqual([c.args[0][1] for c in run.call_args_list], ['stop','start'])
+
+    def test_stopped_simulator_stays_stopped(self):
+        with patch.object(remote, 'service', return_value='inactive'), patch.object(remote.subprocess, 'run') as run:
+            with remote.isolated_simulation():
+                pass
+            run.assert_not_called()
+
+    def test_latency_reports_negative_clock_values(self):
+        rows = [('id','cabine-001','corrente', value) for value in [-1, 1, 2, 10]]
+        result = remote.latency_summary(rows)
+        self.assertEqual(result['p95_s'], 10)
+        self.assertTrue(result['relogio_inconsistente'])
 
     def test_failed_publish_never_runs_database_success_check(self):
         fake_session = MagicMock()

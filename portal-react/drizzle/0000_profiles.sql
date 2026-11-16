@@ -1,0 +1,3 @@
+CREATE TABLE profiles (identity TEXT PRIMARY KEY NOT NULL, name TEXT NOT NULL, active INTEGER NOT NULL DEFAULT 1);
+--> statement-breakpoint
+CREATE TABLE messages (id TEXT PRIMARY KEY NOT NULL, name TEXT NOT NULL, email TEXT NOT NULL, message TEXT NOT NULL);

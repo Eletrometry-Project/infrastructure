@@ -67,21 +67,22 @@ class IntegratedTests(unittest.TestCase):
                 self.assertEqual(target.get('panelId'),1)
 
     def test_cloudinit_size_and_decodable_payload(self):
-        # Mesmo conjunto de arquivos e estrutura do Terraform; valores ficticios de tamanho realista.
-        paths=['install.sh','configure.py','health.py','build_dashboard.py','dashboard_sql.py','analysis_rules.json','eletrometry-bootstrap.service',
-               'neo4j/Dockerfile','neo4j/health.sh','neo4j/eletrometry-neo4j.service']
-        files=[{'path':'/opt/eletrometry-observability/'+n,'permissions':'0644','owner':'root:root',
-                'content':(ROOT/'observability'/n).read_text()} for n in paths]
-        config={'db_host':'eletrometry-lab.cfwcj9fejx5w.us-east-1.rds.amazonaws.com','db_name':'eletrometry','admin_user':'eletrometry_admin',
-            'admin_password':'A'*24,'mysql_password':'B'*32,'grafana_password':'C'*32,'neo4j_password':'D'*32,
-            'grafana_url':'http://elgraf20261005180000000000000001-1234567890.us-east-1.elb.amazonaws.com','public_ip':'203.0.113.123'}
-        files.append({'path':'/etc/eletrometry-observability/bootstrap.json','permissions':'0600','owner':'root:root','content':json.dumps(config)})
-        raw=('#cloud-config\n'+json.dumps({'write_files':files,'runcmd':[['cp','/opt/eletrometry-observability/eletrometry-bootstrap.service','/etc/systemd/system/eletrometry-bootstrap.service'],['systemctl','daemon-reload'],['systemctl','enable','--now','--no-block','eletrometry-bootstrap.service']]})).encode()
-        compressed=gzip.compress(raw)
-        self.assertLess(len(compressed),16000) # folga para senhas aleatorias e diferencas de yamlencode
-        restored=yaml.safe_load(gzip.decompress(compressed))
-        self.assertEqual(len(restored['write_files']),11)
-        print('User-data representativo comprimido:',len(compressed),'bytes (limite EC2: 16384)')
+        import subprocess
+        packed = (ROOT/'infra/panel-files.br').read_bytes()
+        runtime = {'db_host':'example.us-east-1.rds.amazonaws.com','passwords':'A'*128}
+        template = (ROOT/'infra/panel-bootstrap.tftpl').read_text()
+        script = template.replace('${files}',base64.b64encode(packed).decode()).replace(
+            '${runtime}',base64.b64encode(json.dumps(runtime).encode()).decode())
+        compile(script, '<user-data>', 'exec')
+        self.assertLessEqual(len(gzip.compress(script.encode())), 16384)
+        decoded = subprocess.check_output(['node','-e',
+            "process.stdout.write(require('node:zlib').brotliDecompressSync(require('node:fs').readFileSync(0)))"], input=packed)
+        files = json.loads(decoded)
+        dashboards = {name for name in files if name.startswith('dashboards/')}
+        self.assertEqual(len(dashboards), 5)
+        for name in dashboards:
+            self.assertEqual(json.loads(files[name]), json.loads((ROOT/'observability'/name).read_text()))
+        self.assertNotIn('build_dashboard.py', files['install.sh'])
 
     @patch.object(h.Path,'read_text',return_value='{"grafana_password":"test"}')
     @patch.object(h.urllib.request,'urlopen')

@@ -1,3 +1,5 @@
+> **Atualização visual v3:** para esta entrega, siga `ATUALIZACAO-VISUAL-V3.md`. Basta `lab.ps1 dashboards`; o procedimento abaixo documenta a atualização anterior de coleta e dashboards.
+
 # Atualizar as dashboards na EC2 existente
 
 O Grafana já está funcionando: esta atualização não exige Terraform apply nem recriação de recursos.
@@ -15,7 +17,7 @@ Se o Defender ainda detectar este ZIP, mantenha-o bloqueado. Esta revisão do in
 .\lab.ps1 dashboards
 ```
 
-O primeiro atualiza consumidor/simulador e reinicia esses serviços, passando temperatura e corrente para 1 segundo. Mantém as leituras do RDS. Caso use simulador externo, execute com `--temperatura-intervalo 1` e use `lab.ps1 parar` depois da atualização para não duplicar fontes.
+O primeiro atualiza consumidor/simulador, reinicia o consumidor e preserva o estado anterior do simulador, passando temperatura e corrente para 1 segundo. Mantém as leituras do RDS. Caso use simulador externo, execute com `--temperatura-intervalo 1` e use `lab.ps1 parar` depois da atualização para não duplicar fontes.
 
 O segundo envia os dois JSONs e o instalador Python em texto UTF-8 por SSM, verifica o SHA-256 de cada arquivo, testa as consultas no Grafana/MySQL antes de substituir os JSONs e cria backup local. Pode reiniciar apenas o Grafana para mudar a página inicial. Não usa SSH, não altera schema, não recria o Neo4j.
 

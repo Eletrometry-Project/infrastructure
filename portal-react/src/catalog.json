@@ -1,0 +1,70 @@
+{
+  "eletrometry-gestor": {
+    "1": "Alertas críticos no período",
+    "2": "Como está a planta?",
+    "3": "Tempo acumulado em risco",
+    "4": "Cabines monitoradas",
+    "5": "Quais problemas ocorreram?",
+    "6": "Onde houve mais alertas?",
+    "7": "Onde o risco durou mais?",
+    "8": "Situação das cabines · abrir histórico",
+    "9": "Ativas / desativadas · cadastro pendente",
+    "10": "Disponibilidade operacional"
+  },
+  "eletrometry-historico": {
+    "1": "Eventos confirmados",
+    "2": "Críticos",
+    "3": "Moderados",
+    "4": "Em atenção",
+    "6": "Corrente e temperatura por fase",
+    "7": "Eventos confirmados por hora",
+    "8": "Histórico de ocorrências · até 500 eventos"
+  },
+  "eletrometry-tendencias": {
+    "1": "Corrente média · período",
+    "2": "Temperatura média · período",
+    "3": "Exposição ao risco · período",
+    "4": "Disponibilidade operacional",
+    "5": "Principal risco · frequência histórica",
+    "6": "Temperatura média da planta",
+    "7": "Modelo de referência · cobertura",
+    "8": "Alertas · histórico e projeção de referência",
+    "9": "Corrente · histórico e projeção de referência",
+    "10": "Criticidade prevista · próximos três meses",
+    "11": "Probabilidade de evento · próximos 90 dias"
+  },
+  "eletrometry-visao-geral": {
+    "1": "Cabines em alerta",
+    "2": "Cabines em estado crítico",
+    "3": "Cabines sem dados recentes",
+    "4": "Alertas críticos no período",
+    "5": "Prioridades · clique na cabine para abrir os detalhes",
+    "22": "Cabine mais crítica",
+    "23": "Tipo com mais ocorrências",
+    "24": "Cabines com ocorrências",
+    "25": "Cabines com reincidência",
+    "6": "Ocorrências confirmadas · últimas 50"
+  },
+  "eletrometry-cabines": {
+    "1": "${cabine:text} · estado no fim do período",
+    "2": "Temperatura · maior fase · ideal 60 °C",
+    "3": "Corrente · maior fase · ideal 396 A",
+    "4": "Tempo acima do ideal · ${metrica:text}",
+    "13": "Desvio atual · ${metrica:text} (°C / A)",
+    "14": "Tempo em crítico · ${metrica:text}",
+    "5": "Margem até 90 °C",
+    "15": "Variação de temperatura",
+    "16": "Tendência térmica",
+    "6": "Corrente e temperatura por fase",
+    "8": "Carregamento · média das três fases",
+    "9": "Referências de carregamento",
+    "7": "Desequilíbrio · correntes",
+    "30": "Fase R · corrente",
+    "31": "Fase S · corrente",
+    "32": "Fase T · corrente",
+    "10": "Telemetria · ${sensor:text} / ${fase:text}",
+    "11": "Medição · ${sensor:text} / ${fase:text}",
+    "17": "Faixa da leitura selecionada",
+    "12": "Comunicação · correntes R / S / T"
+  }
+}

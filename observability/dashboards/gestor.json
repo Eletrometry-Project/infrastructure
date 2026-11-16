@@ -1,0 +1,728 @@
+{
+  "id": null,
+  "uid": "eletrometry-gestor",
+  "title": "03 · Gestor — resumo da planta",
+  "version": 6,
+  "schemaVersion": 39,
+  "editable": false,
+  "tags": [
+    "eletrometry",
+    "entrega-v6",
+    "ingestao-lotes"
+  ],
+  "timezone": "browser",
+  "refresh": "",
+  "time": {
+    "from": "now-1h",
+    "to": "now"
+  },
+  "timepicker": {
+    "refresh_intervals": [
+      "30s",
+      "1m",
+      "5m"
+    ],
+    "time_options": [
+      "10m",
+      "1h",
+      "24h",
+      "7d",
+      "30d"
+    ]
+  },
+  "description": "Entrega v6 — cinco dashboards. Dados do RDS. Layout v3, painéis nativos. Regras provisórias em REGRAS-DASHBOARDS.md.",
+  "annotations": {
+    "list": []
+  },
+  "links": [
+    {
+      "title": "Analista",
+      "type": "link",
+      "url": "/d/eletrometry-visao-geral?${__url_time_range}"
+    },
+    {
+      "title": "Gestor",
+      "type": "link",
+      "url": "/d/eletrometry-gestor?${__url_time_range}"
+    },
+    {
+      "title": "Tendências",
+      "type": "link",
+      "url": "/d/eletrometry-tendencias?${__url_time_range}"
+    },
+    {
+      "title": "10 min",
+      "type": "link",
+      "url": "/d/eletrometry-gestor?from=now-10m&to=now&${cabine:queryparam}",
+      "targetBlank": false
+    },
+    {
+      "title": "1 hora",
+      "type": "link",
+      "url": "/d/eletrometry-gestor?from=now-1h&to=now&${cabine:queryparam}",
+      "targetBlank": false
+    },
+    {
+      "title": "24 horas",
+      "type": "link",
+      "url": "/d/eletrometry-gestor?from=now-24h&to=now&${cabine:queryparam}",
+      "targetBlank": false
+    },
+    {
+      "title": "1 semana",
+      "type": "link",
+      "url": "/d/eletrometry-gestor?from=now-7d&to=now&${cabine:queryparam}",
+      "targetBlank": false
+    },
+    {
+      "title": "1 mês",
+      "type": "link",
+      "url": "/d/eletrometry-gestor?from=now-30d&to=now&${cabine:queryparam}",
+      "targetBlank": false
+    }
+  ],
+  "panels": [
+    {
+      "id": 90,
+      "title": "Resumo para decidir prioridades",
+      "type": "text",
+      "gridPos": {
+        "x": 0,
+        "y": 0,
+        "w": 24,
+        "h": 3
+      },
+      "options": {
+        "mode": "markdown",
+        "content": "**Estado atual:** verifique a situação da planta. **Período:** compare quais cabines tiveram mais alertas e mais tempo em risco.\n\nTempo acumulado soma a duração de cada cabine: duas cabines em risco por 1 hora = 2 horas-cabine. Clique em uma cabine para abrir seu histórico."
+      },
+      "transparent": true
+    },
+    {
+      "id": 1,
+      "title": "Alertas críticos no período",
+      "type": "stat",
+      "gridPos": {
+        "x": 0,
+        "y": 3,
+        "w": 6,
+        "h": 4
+      },
+      "description": "",
+      "datasource": {
+        "type": "mysql",
+        "uid": "eletrometry-mysql"
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "mysql",
+            "uid": "eletrometry-mysql"
+          },
+          "rawSql": "SELECT /*+ MAX_EXECUTION_TIME(15000) */ * FROM (WITH\nraw AS (SELECT * FROM leituras WHERE 1=1 AND coletado_em >= FROM_UNIXTIME(${__from}/1000.0) - INTERVAL 60 SECOND AND coletado_em <= LEAST(FROM_UNIXTIME(${__to}/1000.0), UTC_TIMESTAMP(3))),\nphases AS (SELECT event_id,cabine_id,tipo,coletado_em,recebido_em,'A' fase,CASE WHEN qualidade_a='ok' THEN fase_a END valor FROM raw UNION ALL SELECT event_id,cabine_id,tipo,coletado_em,recebido_em,'B' fase,CASE WHEN qualidade_b='ok' THEN fase_b END valor FROM raw UNION ALL SELECT event_id,cabine_id,tipo,coletado_em,recebido_em,'C' fase,CASE WHEN qualidade_c='ok' THEN fase_c END valor FROM raw),\nlimits AS (\n SELECT *,UNIX_TIMESTAMP(coletado_em) ts,\n CASE WHEN tipo='temperatura' THEN 60 ELSE (CASE cabine_id WHEN 'cabine-001' THEN 600.0 WHEN 'cabine-002' THEN 600.0 WHEN 'cabine-003' THEN 600.0 ELSE 600.0 END)*0.66 END ideal,\n CASE WHEN tipo='temperatura' THEN 70 ELSE (CASE cabine_id WHEN 'cabine-001' THEN 600.0 WHEN 'cabine-002' THEN 600.0 WHEN 'cabine-003' THEN 600.0 ELSE 600.0 END)*0.759 END lim1,\n CASE WHEN tipo='temperatura' THEN 80 ELSE (CASE cabine_id WHEN 'cabine-001' THEN 600.0 WHEN 'cabine-002' THEN 600.0 WHEN 'cabine-003' THEN 600.0 ELSE 600.0 END)*0.8580000000000001 END lim2,\n CASE WHEN tipo='temperatura' THEN 90 ELSE (CASE cabine_id WHEN 'cabine-001' THEN 600.0 WHEN 'cabine-002' THEN 600.0 WHEN 'cabine-003' THEN 600.0 ELSE 600.0 END)*0.957 END lim3\n FROM phases\n),\nlevels AS (\n SELECT *,CASE WHEN valor IS NULL THEN NULL WHEN valor>=lim3 THEN 3 WHEN valor>=lim2 THEN 2 WHEN valor>=lim1 THEN 1 ELSE 0 END severity,\n AVG(valor) OVER (PARTITION BY cabine_id,tipo,fase ORDER BY ts RANGE BETWEEN 10 PRECEDING AND 1 PRECEDING) baseline,\n MAX(CASE WHEN tipo='temperatura' THEN valor END) OVER (PARTITION BY cabine_id,fase ORDER BY ts RANGE BETWEEN 5 PRECEDING AND CURRENT ROW) temp_recent,\n LAG(ts) OVER w prev_ts,LEAD(ts) OVER w next_ts,\n LEAD(valor) OVER w next_val,\n ROW_NUMBER() OVER (PARTITION BY cabine_id,tipo,fase ORDER BY ts DESC,event_id DESC) rn\n FROM limits WINDOW w AS (PARTITION BY cabine_id,tipo,fase ORDER BY ts,event_id)\n),\nflags AS (\n SELECT *,LAG(severity) OVER (PARTITION BY cabine_id,tipo,fase ORDER BY ts,event_id) prev_severity,\n CASE WHEN next_val IS NOT NULL AND valor IS NOT NULL AND next_ts-ts<=5\n THEN GREATEST(0,LEAST(next_ts,UNIX_TIMESTAMP(LEAST(FROM_UNIXTIME(${__to}/1000.0), UTC_TIMESTAMP(3))))-GREATEST(ts,UNIX_TIMESTAMP(FROM_UNIXTIME(${__from}/1000.0)))) ELSE 0 END dt\n FROM levels\n),\ngroups_ AS (\n SELECT *,SUM(CASE WHEN severity>0 AND (COALESCE(prev_severity,0)=0 OR ts-prev_ts>5) THEN 1 ELSE 0 END)\n OVER (PARTITION BY cabine_id,tipo,fase ORDER BY ts,event_id) grp\n FROM flags\n),\nmarked AS (\n SELECT *,MIN(CASE WHEN severity>0 THEN ts END) OVER (PARTITION BY cabine_id,tipo,fase,grp) event_start\n FROM groups_\n),\nevent_groups AS (\n SELECT cabine_id,tipo,fase,grp,MIN(ts) first_ts,MAX(ts) last_ts,MAX(severity) severity,\n MAX(valor) peak,\n MIN(CASE WHEN ts-event_start>=10 OR (baseline>0 AND valor>=baseline*1.2 AND temp_recent>=70) THEN ts END) confirmed_ts,\n SUM(CASE WHEN severity=3 THEN dt ELSE 0 END) critical_seconds\n FROM marked WHERE severity>0 GROUP BY cabine_id,tipo,fase,grp\n),\nevents AS (\n SELECT * FROM event_groups WHERE confirmed_ts IS NOT NULL AND last_ts>=UNIX_TIMESTAMP(FROM_UNIXTIME(${__from}/1000.0))\n),\nlatest AS (SELECT * FROM levels WHERE rn=1 AND coletado_em>=FROM_UNIXTIME(${__from}/1000.0))\nSELECT COUNT(*) valor FROM events WHERE severity=3) bounded_query",
+          "format": "table",
+          "editorMode": "code",
+          "rawQuery": true
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "decimals": 0,
+          "noValue": "Sem dados",
+          "color": {
+            "mode": "fixed",
+            "fixedColor": "text"
+          },
+          "mappings": []
+        },
+        "overrides": []
+      },
+      "options": {
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "/.*/",
+          "values": false
+        },
+        "textMode": "value",
+        "colorMode": "none",
+        "graphMode": "none",
+        "text": {
+          "valueSize": 26
+        }
+      },
+      "pluginVersion": "12.2.0"
+    },
+    {
+      "id": 2,
+      "title": "Como está a planta?",
+      "type": "stat",
+      "gridPos": {
+        "x": 6,
+        "y": 3,
+        "w": 6,
+        "h": 4
+      },
+      "description": "",
+      "datasource": {
+        "type": "mysql",
+        "uid": "eletrometry-mysql"
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "mysql",
+            "uid": "eletrometry-mysql"
+          },
+          "rawSql": "SELECT /*+ MAX_EXECUTION_TIME(15000) */ * FROM (WITH raw AS (SELECT * FROM (SELECT * FROM leituras WHERE cabine_id='cabine-001' AND tipo='corrente' AND coletado_em BETWEEN FROM_UNIXTIME(${__from}/1000.0) AND LEAST(FROM_UNIXTIME(${__to}/1000.0), UTC_TIMESTAMP(3)) ORDER BY coletado_em DESC,event_id DESC LIMIT 1) r0 UNION ALL SELECT * FROM (SELECT * FROM leituras WHERE cabine_id='cabine-001' AND tipo='temperatura' AND coletado_em BETWEEN FROM_UNIXTIME(${__from}/1000.0) AND LEAST(FROM_UNIXTIME(${__to}/1000.0), UTC_TIMESTAMP(3)) ORDER BY coletado_em DESC,event_id DESC LIMIT 1) r1 UNION ALL SELECT * FROM (SELECT * FROM leituras WHERE cabine_id='cabine-002' AND tipo='corrente' AND coletado_em BETWEEN FROM_UNIXTIME(${__from}/1000.0) AND LEAST(FROM_UNIXTIME(${__to}/1000.0), UTC_TIMESTAMP(3)) ORDER BY coletado_em DESC,event_id DESC LIMIT 1) r2 UNION ALL SELECT * FROM (SELECT * FROM leituras WHERE cabine_id='cabine-002' AND tipo='temperatura' AND coletado_em BETWEEN FROM_UNIXTIME(${__from}/1000.0) AND LEAST(FROM_UNIXTIME(${__to}/1000.0), UTC_TIMESTAMP(3)) ORDER BY coletado_em DESC,event_id DESC LIMIT 1) r3 UNION ALL SELECT * FROM (SELECT * FROM leituras WHERE cabine_id='cabine-003' AND tipo='corrente' AND coletado_em BETWEEN FROM_UNIXTIME(${__from}/1000.0) AND LEAST(FROM_UNIXTIME(${__to}/1000.0), UTC_TIMESTAMP(3)) ORDER BY coletado_em DESC,event_id DESC LIMIT 1) r4 UNION ALL SELECT * FROM (SELECT * FROM leituras WHERE cabine_id='cabine-003' AND tipo='temperatura' AND coletado_em BETWEEN FROM_UNIXTIME(${__from}/1000.0) AND LEAST(FROM_UNIXTIME(${__to}/1000.0), UTC_TIMESTAMP(3)) ORDER BY coletado_em DESC,event_id DESC LIMIT 1) r5), phases AS (SELECT cabine_id,tipo,coletado_em,CASE WHEN qualidade_a='ok' THEN fase_a END valor FROM raw UNION ALL SELECT cabine_id,tipo,coletado_em,CASE WHEN qualidade_b='ok' THEN fase_b END valor FROM raw UNION ALL SELECT cabine_id,tipo,coletado_em,CASE WHEN qualidade_c='ok' THEN fase_c END valor FROM raw), latest AS (SELECT *,UNIX_TIMESTAMP(coletado_em) ts,CASE WHEN valor IS NULL THEN NULL WHEN valor >= CASE WHEN tipo='temperatura' THEN 90 ELSE (CASE cabine_id WHEN 'cabine-001' THEN 600.0 WHEN 'cabine-002' THEN 600.0 WHEN 'cabine-003' THEN 600.0 ELSE 600.0 END)*0.957 END THEN 3 WHEN valor >= CASE WHEN tipo='temperatura' THEN 80 ELSE (CASE cabine_id WHEN 'cabine-001' THEN 600.0 WHEN 'cabine-002' THEN 600.0 WHEN 'cabine-003' THEN 600.0 ELSE 600.0 END)*0.8580000000000001 END THEN 2 WHEN valor >= CASE WHEN tipo='temperatura' THEN 70 ELSE (CASE cabine_id WHEN 'cabine-001' THEN 600.0 WHEN 'cabine-002' THEN 600.0 WHEN 'cabine-003' THEN 600.0 ELSE 600.0 END)*0.759 END THEN 1 ELSE 0 END severity FROM phases), inventory AS (SELECT 'cabine-001' cabine_id UNION SELECT 'cabine-002' cabine_id UNION SELECT 'cabine-003' cabine_id), current_state AS (\n SELECT i.cabine_id,CASE WHEN COUNT(l.valor)<6 OR MAX(UNIX_TIMESTAMP(LEAST(FROM_UNIXTIME(${__to}/1000.0), UTC_TIMESTAMP(3)))-l.ts)>60 THEN -1 ELSE MAX(l.severity) END estado,\n MAX(CASE WHEN tipo='corrente' THEN valor END) corrente,\n MAX(CASE WHEN tipo='temperatura' THEN valor END) temperatura\n FROM inventory i LEFT JOIN latest l ON l.cabine_id=i.cabine_id GROUP BY i.cabine_id)\n SELECT CASE WHEN SUM(estado=-1)>0 THEN 'Dados incompletos' WHEN MAX(estado)=3 THEN 'Crítico' WHEN MAX(estado)=2 THEN 'Moderado' WHEN MAX(estado)=1 THEN 'Atenção' ELSE 'Normal' END Estado FROM current_state) bounded_query",
+          "format": "table",
+          "editorMode": "code",
+          "rawQuery": true
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "none",
+          "decimals": 1,
+          "noValue": "Sem dados",
+          "color": {
+            "mode": "fixed",
+            "fixedColor": "text"
+          },
+          "mappings": []
+        },
+        "overrides": []
+      },
+      "options": {
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "/.*/",
+          "values": false
+        },
+        "textMode": "value",
+        "colorMode": "none",
+        "graphMode": "none",
+        "text": {
+          "valueSize": 26
+        }
+      },
+      "pluginVersion": "12.2.0"
+    },
+    {
+      "id": 3,
+      "title": "Tempo acumulado em risco",
+      "type": "stat",
+      "gridPos": {
+        "x": 12,
+        "y": 3,
+        "w": 6,
+        "h": 4
+      },
+      "description": "União temporal entre fases e tipos em alerta, por cabine; soma entre cabines. Não equivale à duração de risco da planta nem a indisponibilidade.",
+      "datasource": {
+        "type": "mysql",
+        "uid": "eletrometry-mysql"
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "mysql",
+            "uid": "eletrometry-mysql"
+          },
+          "rawSql": "SELECT /*+ MAX_EXECUTION_TIME(15000) */ * FROM (WITH\nraw AS (SELECT * FROM leituras WHERE 1=1 AND coletado_em >= FROM_UNIXTIME(${__from}/1000.0) - INTERVAL 60 SECOND AND coletado_em <= LEAST(FROM_UNIXTIME(${__to}/1000.0), UTC_TIMESTAMP(3))),\nphases AS (SELECT event_id,cabine_id,tipo,coletado_em,recebido_em,'A' fase,CASE WHEN qualidade_a='ok' THEN fase_a END valor FROM raw UNION ALL SELECT event_id,cabine_id,tipo,coletado_em,recebido_em,'B' fase,CASE WHEN qualidade_b='ok' THEN fase_b END valor FROM raw UNION ALL SELECT event_id,cabine_id,tipo,coletado_em,recebido_em,'C' fase,CASE WHEN qualidade_c='ok' THEN fase_c END valor FROM raw),\nlimits AS (\n SELECT *,UNIX_TIMESTAMP(coletado_em) ts,\n CASE WHEN tipo='temperatura' THEN 60 ELSE (CASE cabine_id WHEN 'cabine-001' THEN 600.0 WHEN 'cabine-002' THEN 600.0 WHEN 'cabine-003' THEN 600.0 ELSE 600.0 END)*0.66 END ideal,\n CASE WHEN tipo='temperatura' THEN 70 ELSE (CASE cabine_id WHEN 'cabine-001' THEN 600.0 WHEN 'cabine-002' THEN 600.0 WHEN 'cabine-003' THEN 600.0 ELSE 600.0 END)*0.759 END lim1,\n CASE WHEN tipo='temperatura' THEN 80 ELSE (CASE cabine_id WHEN 'cabine-001' THEN 600.0 WHEN 'cabine-002' THEN 600.0 WHEN 'cabine-003' THEN 600.0 ELSE 600.0 END)*0.8580000000000001 END lim2,\n CASE WHEN tipo='temperatura' THEN 90 ELSE (CASE cabine_id WHEN 'cabine-001' THEN 600.0 WHEN 'cabine-002' THEN 600.0 WHEN 'cabine-003' THEN 600.0 ELSE 600.0 END)*0.957 END lim3\n FROM phases\n),\nlevels AS (\n SELECT *,CASE WHEN valor IS NULL THEN NULL WHEN valor>=lim3 THEN 3 WHEN valor>=lim2 THEN 2 WHEN valor>=lim1 THEN 1 ELSE 0 END severity,\n AVG(valor) OVER (PARTITION BY cabine_id,tipo,fase ORDER BY ts RANGE BETWEEN 10 PRECEDING AND 1 PRECEDING) baseline,\n MAX(CASE WHEN tipo='temperatura' THEN valor END) OVER (PARTITION BY cabine_id,fase ORDER BY ts RANGE BETWEEN 5 PRECEDING AND CURRENT ROW) temp_recent,\n LAG(ts) OVER w prev_ts,LEAD(ts) OVER w next_ts,\n LEAD(valor) OVER w next_val,\n ROW_NUMBER() OVER (PARTITION BY cabine_id,tipo,fase ORDER BY ts DESC,event_id DESC) rn\n FROM limits WINDOW w AS (PARTITION BY cabine_id,tipo,fase ORDER BY ts,event_id)\n),\nflags AS (\n SELECT *,LAG(severity) OVER (PARTITION BY cabine_id,tipo,fase ORDER BY ts,event_id) prev_severity,\n CASE WHEN next_val IS NOT NULL AND valor IS NOT NULL AND next_ts-ts<=5\n THEN GREATEST(0,LEAST(next_ts,UNIX_TIMESTAMP(LEAST(FROM_UNIXTIME(${__to}/1000.0), UTC_TIMESTAMP(3))))-GREATEST(ts,UNIX_TIMESTAMP(FROM_UNIXTIME(${__from}/1000.0)))) ELSE 0 END dt\n FROM levels\n),\ngroups_ AS (\n SELECT *,SUM(CASE WHEN severity>0 AND (COALESCE(prev_severity,0)=0 OR ts-prev_ts>5) THEN 1 ELSE 0 END)\n OVER (PARTITION BY cabine_id,tipo,fase ORDER BY ts,event_id) grp\n FROM flags\n),\nmarked AS (\n SELECT *,MIN(CASE WHEN severity>0 THEN ts END) OVER (PARTITION BY cabine_id,tipo,fase,grp) event_start\n FROM groups_\n),\nevent_groups AS (\n SELECT cabine_id,tipo,fase,grp,MIN(ts) first_ts,MAX(ts) last_ts,MAX(severity) severity,\n MAX(valor) peak,\n MIN(CASE WHEN ts-event_start>=10 OR (baseline>0 AND valor>=baseline*1.2 AND temp_recent>=70) THEN ts END) confirmed_ts,\n SUM(CASE WHEN severity=3 THEN dt ELSE 0 END) critical_seconds\n FROM marked WHERE severity>0 GROUP BY cabine_id,tipo,fase,grp\n),\nevents AS (\n SELECT * FROM event_groups WHERE confirmed_ts IS NOT NULL AND last_ts>=UNIX_TIMESTAMP(FROM_UNIXTIME(${__from}/1000.0))\n),\nlatest AS (SELECT * FROM levels WHERE rn=1 AND coletado_em>=FROM_UNIXTIME(${__from}/1000.0))\n, risk_intervals AS (\n SELECT DISTINCT cabine_id,GREATEST(ts,UNIX_TIMESTAMP(FROM_UNIXTIME(${__from}/1000.0))) a,\n LEAST(next_ts,UNIX_TIMESTAMP(LEAST(FROM_UNIXTIME(${__to}/1000.0), UTC_TIMESTAMP(3)))) z\n FROM flags WHERE severity>0 AND dt>0\n ), previous_end AS (\n SELECT *,MAX(z) OVER(PARTITION BY cabine_id ORDER BY a,z\n ROWS BETWEEN UNBOUNDED PRECEDING AND 1 PRECEDING) prev_end FROM risk_intervals\n ), islands AS (\n SELECT *,SUM(CASE WHEN prev_end IS NULL OR a>prev_end THEN 1 ELSE 0 END)\n OVER(PARTITION BY cabine_id ORDER BY a,z ROWS UNBOUNDED PRECEDING) island FROM previous_end\n ), merged AS (\n SELECT cabine_id,island,MAX(z)-MIN(a) seconds FROM islands GROUP BY cabine_id,island\n ), exposure AS (SELECT cabine_id,SUM(seconds) seconds FROM merged GROUP BY cabine_id)\n SELECT SUM(seconds)/3600 valor FROM exposure) bounded_query",
+          "format": "table",
+          "editorMode": "code",
+          "rawQuery": true
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "suffix:h-cabine",
+          "decimals": 1,
+          "noValue": "Sem dados",
+          "color": {
+            "mode": "fixed",
+            "fixedColor": "text"
+          },
+          "mappings": []
+        },
+        "overrides": []
+      },
+      "options": {
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "/.*/",
+          "values": false
+        },
+        "textMode": "value",
+        "colorMode": "none",
+        "graphMode": "none",
+        "text": {
+          "valueSize": 26
+        }
+      },
+      "pluginVersion": "12.2.0"
+    },
+    {
+      "id": 4,
+      "title": "Cabines monitoradas",
+      "type": "stat",
+      "gridPos": {
+        "x": 18,
+        "y": 3,
+        "w": 6,
+        "h": 4
+      },
+      "description": "",
+      "datasource": {
+        "type": "mysql",
+        "uid": "eletrometry-mysql"
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "mysql",
+            "uid": "eletrometry-mysql"
+          },
+          "rawSql": "SELECT /*+ MAX_EXECUTION_TIME(15000) */ * FROM (SELECT 3 valor) bounded_query",
+          "format": "table",
+          "editorMode": "code",
+          "rawQuery": true
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "decimals": 0,
+          "noValue": "Sem dados",
+          "color": {
+            "mode": "fixed",
+            "fixedColor": "text"
+          },
+          "mappings": []
+        },
+        "overrides": []
+      },
+      "options": {
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "/.*/",
+          "values": false
+        },
+        "textMode": "value",
+        "colorMode": "none",
+        "graphMode": "none",
+        "text": {
+          "valueSize": 26
+        }
+      },
+      "pluginVersion": "12.2.0"
+    },
+    {
+      "id": 5,
+      "title": "Quais problemas ocorreram?",
+      "type": "barchart",
+      "gridPos": {
+        "x": 0,
+        "y": 7,
+        "w": 8,
+        "h": 9
+      },
+      "description": "",
+      "datasource": {
+        "type": "mysql",
+        "uid": "eletrometry-mysql"
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "mysql",
+            "uid": "eletrometry-mysql"
+          },
+          "rawSql": "SELECT /*+ MAX_EXECUTION_TIME(15000) */ * FROM (WITH\nraw AS (SELECT * FROM leituras WHERE 1=1 AND coletado_em >= FROM_UNIXTIME(${__from}/1000.0) - INTERVAL 60 SECOND AND coletado_em <= LEAST(FROM_UNIXTIME(${__to}/1000.0), UTC_TIMESTAMP(3))),\nphases AS (SELECT event_id,cabine_id,tipo,coletado_em,recebido_em,'A' fase,CASE WHEN qualidade_a='ok' THEN fase_a END valor FROM raw UNION ALL SELECT event_id,cabine_id,tipo,coletado_em,recebido_em,'B' fase,CASE WHEN qualidade_b='ok' THEN fase_b END valor FROM raw UNION ALL SELECT event_id,cabine_id,tipo,coletado_em,recebido_em,'C' fase,CASE WHEN qualidade_c='ok' THEN fase_c END valor FROM raw),\nlimits AS (\n SELECT *,UNIX_TIMESTAMP(coletado_em) ts,\n CASE WHEN tipo='temperatura' THEN 60 ELSE (CASE cabine_id WHEN 'cabine-001' THEN 600.0 WHEN 'cabine-002' THEN 600.0 WHEN 'cabine-003' THEN 600.0 ELSE 600.0 END)*0.66 END ideal,\n CASE WHEN tipo='temperatura' THEN 70 ELSE (CASE cabine_id WHEN 'cabine-001' THEN 600.0 WHEN 'cabine-002' THEN 600.0 WHEN 'cabine-003' THEN 600.0 ELSE 600.0 END)*0.759 END lim1,\n CASE WHEN tipo='temperatura' THEN 80 ELSE (CASE cabine_id WHEN 'cabine-001' THEN 600.0 WHEN 'cabine-002' THEN 600.0 WHEN 'cabine-003' THEN 600.0 ELSE 600.0 END)*0.8580000000000001 END lim2,\n CASE WHEN tipo='temperatura' THEN 90 ELSE (CASE cabine_id WHEN 'cabine-001' THEN 600.0 WHEN 'cabine-002' THEN 600.0 WHEN 'cabine-003' THEN 600.0 ELSE 600.0 END)*0.957 END lim3\n FROM phases\n),\nlevels AS (\n SELECT *,CASE WHEN valor IS NULL THEN NULL WHEN valor>=lim3 THEN 3 WHEN valor>=lim2 THEN 2 WHEN valor>=lim1 THEN 1 ELSE 0 END severity,\n AVG(valor) OVER (PARTITION BY cabine_id,tipo,fase ORDER BY ts RANGE BETWEEN 10 PRECEDING AND 1 PRECEDING) baseline,\n MAX(CASE WHEN tipo='temperatura' THEN valor END) OVER (PARTITION BY cabine_id,fase ORDER BY ts RANGE BETWEEN 5 PRECEDING AND CURRENT ROW) temp_recent,\n LAG(ts) OVER w prev_ts,LEAD(ts) OVER w next_ts,\n LEAD(valor) OVER w next_val,\n ROW_NUMBER() OVER (PARTITION BY cabine_id,tipo,fase ORDER BY ts DESC,event_id DESC) rn\n FROM limits WINDOW w AS (PARTITION BY cabine_id,tipo,fase ORDER BY ts,event_id)\n),\nflags AS (\n SELECT *,LAG(severity) OVER (PARTITION BY cabine_id,tipo,fase ORDER BY ts,event_id) prev_severity,\n CASE WHEN next_val IS NOT NULL AND valor IS NOT NULL AND next_ts-ts<=5\n THEN GREATEST(0,LEAST(next_ts,UNIX_TIMESTAMP(LEAST(FROM_UNIXTIME(${__to}/1000.0), UTC_TIMESTAMP(3))))-GREATEST(ts,UNIX_TIMESTAMP(FROM_UNIXTIME(${__from}/1000.0)))) ELSE 0 END dt\n FROM levels\n),\ngroups_ AS (\n SELECT *,SUM(CASE WHEN severity>0 AND (COALESCE(prev_severity,0)=0 OR ts-prev_ts>5) THEN 1 ELSE 0 END)\n OVER (PARTITION BY cabine_id,tipo,fase ORDER BY ts,event_id) grp\n FROM flags\n),\nmarked AS (\n SELECT *,MIN(CASE WHEN severity>0 THEN ts END) OVER (PARTITION BY cabine_id,tipo,fase,grp) event_start\n FROM groups_\n),\nevent_groups AS (\n SELECT cabine_id,tipo,fase,grp,MIN(ts) first_ts,MAX(ts) last_ts,MAX(severity) severity,\n MAX(valor) peak,\n MIN(CASE WHEN ts-event_start>=10 OR (baseline>0 AND valor>=baseline*1.2 AND temp_recent>=70) THEN ts END) confirmed_ts,\n SUM(CASE WHEN severity=3 THEN dt ELSE 0 END) critical_seconds\n FROM marked WHERE severity>0 GROUP BY cabine_id,tipo,fase,grp\n),\nevents AS (\n SELECT * FROM event_groups WHERE confirmed_ts IS NOT NULL AND last_ts>=UNIX_TIMESTAMP(FROM_UNIXTIME(${__from}/1000.0))\n),\nlatest AS (SELECT * FROM levels WHERE rn=1 AND coletado_em>=FROM_UNIXTIME(${__from}/1000.0))\nSELECT tipo Tipo,SUM(severity=1) Atencao,SUM(severity=2) Moderado,SUM(severity=3) Critico FROM events GROUP BY tipo) bounded_query",
+          "format": "table",
+          "editorMode": "code",
+          "rawQuery": true
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "decimals": 1,
+          "noValue": "Sem dados",
+          "color": {
+            "mode": "fixed",
+            "fixedColor": "text"
+          },
+          "mappings": []
+        },
+        "overrides": []
+      },
+      "options": {
+        "orientation": "horizontal",
+        "showValue": "auto",
+        "legend": {
+          "showLegend": true,
+          "placement": "bottom"
+        },
+        "tooltip": {
+          "mode": "multi"
+        },
+        "stacking": "normal"
+      },
+      "pluginVersion": "12.2.0"
+    },
+    {
+      "id": 6,
+      "title": "Onde houve mais alertas?",
+      "type": "barchart",
+      "gridPos": {
+        "x": 8,
+        "y": 7,
+        "w": 8,
+        "h": 9
+      },
+      "description": "",
+      "datasource": {
+        "type": "mysql",
+        "uid": "eletrometry-mysql"
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "mysql",
+            "uid": "eletrometry-mysql"
+          },
+          "rawSql": "SELECT /*+ MAX_EXECUTION_TIME(15000) */ * FROM (WITH\nraw AS (SELECT * FROM leituras WHERE 1=1 AND coletado_em >= FROM_UNIXTIME(${__from}/1000.0) - INTERVAL 60 SECOND AND coletado_em <= LEAST(FROM_UNIXTIME(${__to}/1000.0), UTC_TIMESTAMP(3))),\nphases AS (SELECT event_id,cabine_id,tipo,coletado_em,recebido_em,'A' fase,CASE WHEN qualidade_a='ok' THEN fase_a END valor FROM raw UNION ALL SELECT event_id,cabine_id,tipo,coletado_em,recebido_em,'B' fase,CASE WHEN qualidade_b='ok' THEN fase_b END valor FROM raw UNION ALL SELECT event_id,cabine_id,tipo,coletado_em,recebido_em,'C' fase,CASE WHEN qualidade_c='ok' THEN fase_c END valor FROM raw),\nlimits AS (\n SELECT *,UNIX_TIMESTAMP(coletado_em) ts,\n CASE WHEN tipo='temperatura' THEN 60 ELSE (CASE cabine_id WHEN 'cabine-001' THEN 600.0 WHEN 'cabine-002' THEN 600.0 WHEN 'cabine-003' THEN 600.0 ELSE 600.0 END)*0.66 END ideal,\n CASE WHEN tipo='temperatura' THEN 70 ELSE (CASE cabine_id WHEN 'cabine-001' THEN 600.0 WHEN 'cabine-002' THEN 600.0 WHEN 'cabine-003' THEN 600.0 ELSE 600.0 END)*0.759 END lim1,\n CASE WHEN tipo='temperatura' THEN 80 ELSE (CASE cabine_id WHEN 'cabine-001' THEN 600.0 WHEN 'cabine-002' THEN 600.0 WHEN 'cabine-003' THEN 600.0 ELSE 600.0 END)*0.8580000000000001 END lim2,\n CASE WHEN tipo='temperatura' THEN 90 ELSE (CASE cabine_id WHEN 'cabine-001' THEN 600.0 WHEN 'cabine-002' THEN 600.0 WHEN 'cabine-003' THEN 600.0 ELSE 600.0 END)*0.957 END lim3\n FROM phases\n),\nlevels AS (\n SELECT *,CASE WHEN valor IS NULL THEN NULL WHEN valor>=lim3 THEN 3 WHEN valor>=lim2 THEN 2 WHEN valor>=lim1 THEN 1 ELSE 0 END severity,\n AVG(valor) OVER (PARTITION BY cabine_id,tipo,fase ORDER BY ts RANGE BETWEEN 10 PRECEDING AND 1 PRECEDING) baseline,\n MAX(CASE WHEN tipo='temperatura' THEN valor END) OVER (PARTITION BY cabine_id,fase ORDER BY ts RANGE BETWEEN 5 PRECEDING AND CURRENT ROW) temp_recent,\n LAG(ts) OVER w prev_ts,LEAD(ts) OVER w next_ts,\n LEAD(valor) OVER w next_val,\n ROW_NUMBER() OVER (PARTITION BY cabine_id,tipo,fase ORDER BY ts DESC,event_id DESC) rn\n FROM limits WINDOW w AS (PARTITION BY cabine_id,tipo,fase ORDER BY ts,event_id)\n),\nflags AS (\n SELECT *,LAG(severity) OVER (PARTITION BY cabine_id,tipo,fase ORDER BY ts,event_id) prev_severity,\n CASE WHEN next_val IS NOT NULL AND valor IS NOT NULL AND next_ts-ts<=5\n THEN GREATEST(0,LEAST(next_ts,UNIX_TIMESTAMP(LEAST(FROM_UNIXTIME(${__to}/1000.0), UTC_TIMESTAMP(3))))-GREATEST(ts,UNIX_TIMESTAMP(FROM_UNIXTIME(${__from}/1000.0)))) ELSE 0 END dt\n FROM levels\n),\ngroups_ AS (\n SELECT *,SUM(CASE WHEN severity>0 AND (COALESCE(prev_severity,0)=0 OR ts-prev_ts>5) THEN 1 ELSE 0 END)\n OVER (PARTITION BY cabine_id,tipo,fase ORDER BY ts,event_id) grp\n FROM flags\n),\nmarked AS (\n SELECT *,MIN(CASE WHEN severity>0 THEN ts END) OVER (PARTITION BY cabine_id,tipo,fase,grp) event_start\n FROM groups_\n),\nevent_groups AS (\n SELECT cabine_id,tipo,fase,grp,MIN(ts) first_ts,MAX(ts) last_ts,MAX(severity) severity,\n MAX(valor) peak,\n MIN(CASE WHEN ts-event_start>=10 OR (baseline>0 AND valor>=baseline*1.2 AND temp_recent>=70) THEN ts END) confirmed_ts,\n SUM(CASE WHEN severity=3 THEN dt ELSE 0 END) critical_seconds\n FROM marked WHERE severity>0 GROUP BY cabine_id,tipo,fase,grp\n),\nevents AS (\n SELECT * FROM event_groups WHERE confirmed_ts IS NOT NULL AND last_ts>=UNIX_TIMESTAMP(FROM_UNIXTIME(${__from}/1000.0))\n),\nlatest AS (SELECT * FROM levels WHERE rn=1 AND coletado_em>=FROM_UNIXTIME(${__from}/1000.0))\nSELECT cabine_id Cabine,COUNT(*) Eventos FROM events GROUP BY cabine_id ORDER BY Eventos DESC) bounded_query",
+          "format": "table",
+          "editorMode": "code",
+          "rawQuery": true
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "decimals": 1,
+          "noValue": "Sem dados",
+          "color": {
+            "mode": "fixed",
+            "fixedColor": "text"
+          },
+          "mappings": []
+        },
+        "overrides": []
+      },
+      "options": {
+        "orientation": "horizontal",
+        "showValue": "auto",
+        "legend": {
+          "showLegend": true,
+          "placement": "bottom"
+        },
+        "tooltip": {
+          "mode": "multi"
+        },
+        "stacking": "normal"
+      },
+      "pluginVersion": "12.2.0"
+    },
+    {
+      "id": 7,
+      "title": "Onde o risco durou mais?",
+      "type": "barchart",
+      "gridPos": {
+        "x": 16,
+        "y": 7,
+        "w": 8,
+        "h": 9
+      },
+      "description": "",
+      "datasource": {
+        "type": "mysql",
+        "uid": "eletrometry-mysql"
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "mysql",
+            "uid": "eletrometry-mysql"
+          },
+          "rawSql": "SELECT /*+ MAX_EXECUTION_TIME(15000) */ * FROM (WITH\nraw AS (SELECT * FROM leituras WHERE 1=1 AND coletado_em >= FROM_UNIXTIME(${__from}/1000.0) - INTERVAL 60 SECOND AND coletado_em <= LEAST(FROM_UNIXTIME(${__to}/1000.0), UTC_TIMESTAMP(3))),\nphases AS (SELECT event_id,cabine_id,tipo,coletado_em,recebido_em,'A' fase,CASE WHEN qualidade_a='ok' THEN fase_a END valor FROM raw UNION ALL SELECT event_id,cabine_id,tipo,coletado_em,recebido_em,'B' fase,CASE WHEN qualidade_b='ok' THEN fase_b END valor FROM raw UNION ALL SELECT event_id,cabine_id,tipo,coletado_em,recebido_em,'C' fase,CASE WHEN qualidade_c='ok' THEN fase_c END valor FROM raw),\nlimits AS (\n SELECT *,UNIX_TIMESTAMP(coletado_em) ts,\n CASE WHEN tipo='temperatura' THEN 60 ELSE (CASE cabine_id WHEN 'cabine-001' THEN 600.0 WHEN 'cabine-002' THEN 600.0 WHEN 'cabine-003' THEN 600.0 ELSE 600.0 END)*0.66 END ideal,\n CASE WHEN tipo='temperatura' THEN 70 ELSE (CASE cabine_id WHEN 'cabine-001' THEN 600.0 WHEN 'cabine-002' THEN 600.0 WHEN 'cabine-003' THEN 600.0 ELSE 600.0 END)*0.759 END lim1,\n CASE WHEN tipo='temperatura' THEN 80 ELSE (CASE cabine_id WHEN 'cabine-001' THEN 600.0 WHEN 'cabine-002' THEN 600.0 WHEN 'cabine-003' THEN 600.0 ELSE 600.0 END)*0.8580000000000001 END lim2,\n CASE WHEN tipo='temperatura' THEN 90 ELSE (CASE cabine_id WHEN 'cabine-001' THEN 600.0 WHEN 'cabine-002' THEN 600.0 WHEN 'cabine-003' THEN 600.0 ELSE 600.0 END)*0.957 END lim3\n FROM phases\n),\nlevels AS (\n SELECT *,CASE WHEN valor IS NULL THEN NULL WHEN valor>=lim3 THEN 3 WHEN valor>=lim2 THEN 2 WHEN valor>=lim1 THEN 1 ELSE 0 END severity,\n AVG(valor) OVER (PARTITION BY cabine_id,tipo,fase ORDER BY ts RANGE BETWEEN 10 PRECEDING AND 1 PRECEDING) baseline,\n MAX(CASE WHEN tipo='temperatura' THEN valor END) OVER (PARTITION BY cabine_id,fase ORDER BY ts RANGE BETWEEN 5 PRECEDING AND CURRENT ROW) temp_recent,\n LAG(ts) OVER w prev_ts,LEAD(ts) OVER w next_ts,\n LEAD(valor) OVER w next_val,\n ROW_NUMBER() OVER (PARTITION BY cabine_id,tipo,fase ORDER BY ts DESC,event_id DESC) rn\n FROM limits WINDOW w AS (PARTITION BY cabine_id,tipo,fase ORDER BY ts,event_id)\n),\nflags AS (\n SELECT *,LAG(severity) OVER (PARTITION BY cabine_id,tipo,fase ORDER BY ts,event_id) prev_severity,\n CASE WHEN next_val IS NOT NULL AND valor IS NOT NULL AND next_ts-ts<=5\n THEN GREATEST(0,LEAST(next_ts,UNIX_TIMESTAMP(LEAST(FROM_UNIXTIME(${__to}/1000.0), UTC_TIMESTAMP(3))))-GREATEST(ts,UNIX_TIMESTAMP(FROM_UNIXTIME(${__from}/1000.0)))) ELSE 0 END dt\n FROM levels\n),\ngroups_ AS (\n SELECT *,SUM(CASE WHEN severity>0 AND (COALESCE(prev_severity,0)=0 OR ts-prev_ts>5) THEN 1 ELSE 0 END)\n OVER (PARTITION BY cabine_id,tipo,fase ORDER BY ts,event_id) grp\n FROM flags\n),\nmarked AS (\n SELECT *,MIN(CASE WHEN severity>0 THEN ts END) OVER (PARTITION BY cabine_id,tipo,fase,grp) event_start\n FROM groups_\n),\nevent_groups AS (\n SELECT cabine_id,tipo,fase,grp,MIN(ts) first_ts,MAX(ts) last_ts,MAX(severity) severity,\n MAX(valor) peak,\n MIN(CASE WHEN ts-event_start>=10 OR (baseline>0 AND valor>=baseline*1.2 AND temp_recent>=70) THEN ts END) confirmed_ts,\n SUM(CASE WHEN severity=3 THEN dt ELSE 0 END) critical_seconds\n FROM marked WHERE severity>0 GROUP BY cabine_id,tipo,fase,grp\n),\nevents AS (\n SELECT * FROM event_groups WHERE confirmed_ts IS NOT NULL AND last_ts>=UNIX_TIMESTAMP(FROM_UNIXTIME(${__from}/1000.0))\n),\nlatest AS (SELECT * FROM levels WHERE rn=1 AND coletado_em>=FROM_UNIXTIME(${__from}/1000.0))\n, risk_intervals AS (\n SELECT DISTINCT cabine_id,GREATEST(ts,UNIX_TIMESTAMP(FROM_UNIXTIME(${__from}/1000.0))) a,\n LEAST(next_ts,UNIX_TIMESTAMP(LEAST(FROM_UNIXTIME(${__to}/1000.0), UTC_TIMESTAMP(3)))) z\n FROM flags WHERE severity>0 AND dt>0\n ), previous_end AS (\n SELECT *,MAX(z) OVER(PARTITION BY cabine_id ORDER BY a,z\n ROWS BETWEEN UNBOUNDED PRECEDING AND 1 PRECEDING) prev_end FROM risk_intervals\n ), islands AS (\n SELECT *,SUM(CASE WHEN prev_end IS NULL OR a>prev_end THEN 1 ELSE 0 END)\n OVER(PARTITION BY cabine_id ORDER BY a,z ROWS UNBOUNDED PRECEDING) island FROM previous_end\n ), merged AS (\n SELECT cabine_id,island,MAX(z)-MIN(a) seconds FROM islands GROUP BY cabine_id,island\n ), exposure AS (SELECT cabine_id,SUM(seconds) seconds FROM merged GROUP BY cabine_id)\n SELECT cabine_id Cabine,seconds/3600 Horas FROM exposure ORDER BY seconds DESC) bounded_query",
+          "format": "table",
+          "editorMode": "code",
+          "rawQuery": true
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "h",
+          "decimals": 1,
+          "noValue": "Sem dados",
+          "color": {
+            "mode": "fixed",
+            "fixedColor": "text"
+          },
+          "mappings": []
+        },
+        "overrides": []
+      },
+      "options": {
+        "orientation": "horizontal",
+        "showValue": "auto",
+        "legend": {
+          "showLegend": true,
+          "placement": "bottom"
+        },
+        "tooltip": {
+          "mode": "multi"
+        },
+        "stacking": "normal"
+      },
+      "pluginVersion": "12.2.0"
+    },
+    {
+      "id": 8,
+      "title": "Situação das cabines · abrir histórico",
+      "type": "table",
+      "gridPos": {
+        "x": 0,
+        "y": 16,
+        "w": 24,
+        "h": 9
+      },
+      "description": "",
+      "datasource": {
+        "type": "mysql",
+        "uid": "eletrometry-mysql"
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "mysql",
+            "uid": "eletrometry-mysql"
+          },
+          "rawSql": "SELECT /*+ MAX_EXECUTION_TIME(15000) */ * FROM (WITH\nraw AS (SELECT * FROM leituras WHERE 1=1 AND coletado_em >= FROM_UNIXTIME(${__from}/1000.0) - INTERVAL 60 SECOND AND coletado_em <= LEAST(FROM_UNIXTIME(${__to}/1000.0), UTC_TIMESTAMP(3))),\nphases AS (SELECT event_id,cabine_id,tipo,coletado_em,recebido_em,'A' fase,CASE WHEN qualidade_a='ok' THEN fase_a END valor FROM raw UNION ALL SELECT event_id,cabine_id,tipo,coletado_em,recebido_em,'B' fase,CASE WHEN qualidade_b='ok' THEN fase_b END valor FROM raw UNION ALL SELECT event_id,cabine_id,tipo,coletado_em,recebido_em,'C' fase,CASE WHEN qualidade_c='ok' THEN fase_c END valor FROM raw),\nlimits AS (\n SELECT *,UNIX_TIMESTAMP(coletado_em) ts,\n CASE WHEN tipo='temperatura' THEN 60 ELSE (CASE cabine_id WHEN 'cabine-001' THEN 600.0 WHEN 'cabine-002' THEN 600.0 WHEN 'cabine-003' THEN 600.0 ELSE 600.0 END)*0.66 END ideal,\n CASE WHEN tipo='temperatura' THEN 70 ELSE (CASE cabine_id WHEN 'cabine-001' THEN 600.0 WHEN 'cabine-002' THEN 600.0 WHEN 'cabine-003' THEN 600.0 ELSE 600.0 END)*0.759 END lim1,\n CASE WHEN tipo='temperatura' THEN 80 ELSE (CASE cabine_id WHEN 'cabine-001' THEN 600.0 WHEN 'cabine-002' THEN 600.0 WHEN 'cabine-003' THEN 600.0 ELSE 600.0 END)*0.8580000000000001 END lim2,\n CASE WHEN tipo='temperatura' THEN 90 ELSE (CASE cabine_id WHEN 'cabine-001' THEN 600.0 WHEN 'cabine-002' THEN 600.0 WHEN 'cabine-003' THEN 600.0 ELSE 600.0 END)*0.957 END lim3\n FROM phases\n),\nlevels AS (\n SELECT *,CASE WHEN valor IS NULL THEN NULL WHEN valor>=lim3 THEN 3 WHEN valor>=lim2 THEN 2 WHEN valor>=lim1 THEN 1 ELSE 0 END severity,\n AVG(valor) OVER (PARTITION BY cabine_id,tipo,fase ORDER BY ts RANGE BETWEEN 10 PRECEDING AND 1 PRECEDING) baseline,\n MAX(CASE WHEN tipo='temperatura' THEN valor END) OVER (PARTITION BY cabine_id,fase ORDER BY ts RANGE BETWEEN 5 PRECEDING AND CURRENT ROW) temp_recent,\n LAG(ts) OVER w prev_ts,LEAD(ts) OVER w next_ts,\n LEAD(valor) OVER w next_val,\n ROW_NUMBER() OVER (PARTITION BY cabine_id,tipo,fase ORDER BY ts DESC,event_id DESC) rn\n FROM limits WINDOW w AS (PARTITION BY cabine_id,tipo,fase ORDER BY ts,event_id)\n),\nflags AS (\n SELECT *,LAG(severity) OVER (PARTITION BY cabine_id,tipo,fase ORDER BY ts,event_id) prev_severity,\n CASE WHEN next_val IS NOT NULL AND valor IS NOT NULL AND next_ts-ts<=5\n THEN GREATEST(0,LEAST(next_ts,UNIX_TIMESTAMP(LEAST(FROM_UNIXTIME(${__to}/1000.0), UTC_TIMESTAMP(3))))-GREATEST(ts,UNIX_TIMESTAMP(FROM_UNIXTIME(${__from}/1000.0)))) ELSE 0 END dt\n FROM levels\n),\ngroups_ AS (\n SELECT *,SUM(CASE WHEN severity>0 AND (COALESCE(prev_severity,0)=0 OR ts-prev_ts>5) THEN 1 ELSE 0 END)\n OVER (PARTITION BY cabine_id,tipo,fase ORDER BY ts,event_id) grp\n FROM flags\n),\nmarked AS (\n SELECT *,MIN(CASE WHEN severity>0 THEN ts END) OVER (PARTITION BY cabine_id,tipo,fase,grp) event_start\n FROM groups_\n),\nevent_groups AS (\n SELECT cabine_id,tipo,fase,grp,MIN(ts) first_ts,MAX(ts) last_ts,MAX(severity) severity,\n MAX(valor) peak,\n MIN(CASE WHEN ts-event_start>=10 OR (baseline>0 AND valor>=baseline*1.2 AND temp_recent>=70) THEN ts END) confirmed_ts,\n SUM(CASE WHEN severity=3 THEN dt ELSE 0 END) critical_seconds\n FROM marked WHERE severity>0 GROUP BY cabine_id,tipo,fase,grp\n),\nevents AS (\n SELECT * FROM event_groups WHERE confirmed_ts IS NOT NULL AND last_ts>=UNIX_TIMESTAMP(FROM_UNIXTIME(${__from}/1000.0))\n),\nlatest AS (SELECT * FROM levels WHERE rn=1 AND coletado_em>=FROM_UNIXTIME(${__from}/1000.0))\nSELECT cabine_id Cabine,\n CASE WHEN COUNT(valor)<6 OR MAX(UNIX_TIMESTAMP(LEAST(FROM_UNIXTIME(${__to}/1000.0), UTC_TIMESTAMP(3)))-ts)>60 THEN 'Sem dados recentes' WHEN MAX(severity)=3 THEN 'Crítico' WHEN MAX(severity)=2 THEN 'Moderado' WHEN MAX(severity)=1 THEN 'Atenção' ELSE 'Normal' END Estado,\n MAX(CASE WHEN tipo='corrente' THEN valor END) Corrente_A,\n MAX(CASE WHEN tipo='temperatura' THEN valor END) Temperatura_C\n FROM latest GROUP BY cabine_id ORDER BY MAX(severity) DESC) bounded_query",
+          "format": "table",
+          "editorMode": "code",
+          "rawQuery": true
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "decimals": 1,
+          "noValue": "Sem dados",
+          "color": {
+            "mode": "fixed",
+            "fixedColor": "text"
+          },
+          "mappings": []
+        },
+        "overrides": [
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Estado"
+            },
+            "properties": [
+              {
+                "id": "mappings",
+                "value": [
+                  {
+                    "type": "value",
+                    "options": {
+                      "Normal": {
+                        "text": "Normal",
+                        "color": "green"
+                      },
+                      "Atenção": {
+                        "text": "Atenção",
+                        "color": "yellow"
+                      },
+                      "Moderado": {
+                        "text": "Moderado",
+                        "color": "orange"
+                      },
+                      "Crítico": {
+                        "text": "Crítico",
+                        "color": "red"
+                      },
+                      "Sem dados recentes": {
+                        "text": "Sem dados recentes",
+                        "color": "gray"
+                      }
+                    }
+                  }
+                ]
+              },
+              {
+                "id": "custom.cellOptions",
+                "value": {
+                  "type": "color-background"
+                }
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Cabine"
+            },
+            "properties": [
+              {
+                "id": "links",
+                "value": [
+                  {
+                    "title": "Histórico",
+                    "url": "/d/eletrometry-historico?var-cabine=${__value.raw}&${__url_time_range}"
+                  }
+                ]
+              }
+            ]
+          }
+        ]
+      },
+      "options": {
+        "showHeader": true,
+        "cellHeight": "sm",
+        "enablePagination": true
+      },
+      "pluginVersion": "12.2.0"
+    },
+    {
+      "id": 9,
+      "title": "Ativas / desativadas · cadastro pendente",
+      "type": "stat",
+      "gridPos": {
+        "x": 0,
+        "y": 25,
+        "w": 12,
+        "h": 4
+      },
+      "description": "",
+      "datasource": {
+        "type": "mysql",
+        "uid": "eletrometry-mysql"
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "mysql",
+            "uid": "eletrometry-mysql"
+          },
+          "rawSql": "SELECT /*+ MAX_EXECUTION_TIME(15000) */ * FROM (SELECT 'Sem registro operacional' Estado) bounded_query",
+          "format": "table",
+          "editorMode": "code",
+          "rawQuery": true
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "none",
+          "decimals": 1,
+          "noValue": "Sem dados",
+          "color": {
+            "mode": "fixed",
+            "fixedColor": "text"
+          },
+          "mappings": []
+        },
+        "overrides": []
+      },
+      "options": {
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "/.*/",
+          "values": false
+        },
+        "textMode": "value",
+        "colorMode": "none",
+        "graphMode": "none",
+        "text": {
+          "valueSize": 26
+        }
+      },
+      "pluginVersion": "12.2.0"
+    },
+    {
+      "id": 10,
+      "title": "Disponibilidade operacional",
+      "type": "stat",
+      "gridPos": {
+        "x": 12,
+        "y": 25,
+        "w": 12,
+        "h": 4
+      },
+      "description": "",
+      "datasource": {
+        "type": "mysql",
+        "uid": "eletrometry-mysql"
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "mysql",
+            "uid": "eletrometry-mysql"
+          },
+          "rawSql": "SELECT /*+ MAX_EXECUTION_TIME(15000) */ * FROM (SELECT 'Sem registro de operação' Estado) bounded_query",
+          "format": "table",
+          "editorMode": "code",
+          "rawQuery": true
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "none",
+          "decimals": 1,
+          "noValue": "Sem dados",
+          "color": {
+            "mode": "fixed",
+            "fixedColor": "text"
+          },
+          "mappings": []
+        },
+        "overrides": []
+      },
+      "options": {
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "/.*/",
+          "values": false
+        },
+        "textMode": "value",
+        "colorMode": "none",
+        "graphMode": "none",
+        "text": {
+          "valueSize": 26
+        }
+      },
+      "pluginVersion": "12.2.0"
+    }
+  ],
+  "templating": {
+    "list": []
+  }
+}

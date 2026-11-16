@@ -1,19 +1,19 @@
 {
   "id": null,
   "uid": "eletrometry-cabines",
-  "title": "Eletrometry • Dashboard interna da cabine",
-  "version": 2,
+  "title": "02 · Analista — investigar cabine",
+  "version": 6,
   "schemaVersion": 39,
   "editable": false,
   "tags": [
     "eletrometry",
-    "protótipo",
-    "regras-provisórias"
+    "entrega-v6",
+    "ingestao-lotes"
   ],
   "timezone": "browser",
-  "refresh": "30s",
+  "refresh": "",
   "time": {
-    "from": "now-24h",
+    "from": "now-1h",
     "to": "now"
   },
   "timepicker": {
@@ -23,55 +23,87 @@
       "5m"
     ],
     "time_options": [
-      "1m",
+      "10m",
       "1h",
       "24h",
       "7d",
       "30d"
     ]
   },
-  "description": "Protótipo com dados reais do RDS e regras provisórias do grupo. Ver REGRAS-DASHBOARDS.md. Limites não certificados.",
+  "description": "Entrega v6 — cinco dashboards. Dados do RDS. Layout v3, painéis nativos. Regras provisórias em REGRAS-DASHBOARDS.md.",
   "annotations": {
     "list": []
   },
   "links": [
     {
+      "title": "Analista",
+      "type": "link",
+      "url": "/d/eletrometry-visao-geral?${__url_time_range}&${cabine:queryparam}"
+    },
+    {
+      "title": "Gestor",
+      "type": "link",
+      "url": "/d/eletrometry-gestor?${__url_time_range}&${cabine:queryparam}"
+    },
+    {
+      "title": "Tendências",
+      "type": "link",
+      "url": "/d/eletrometry-tendencias?${__url_time_range}&${cabine:queryparam}"
+    },
+    {
+      "title": "Histórico da cabine",
+      "type": "link",
+      "url": "/d/eletrometry-historico?${cabine:queryparam}&${__url_time_range}"
+    },
+    {
       "title": "← Visão geral",
       "type": "link",
-      "url": "/d/eletrometry-visao-geral?${__url_time_range}&theme=light",
+      "url": "/d/eletrometry-visao-geral?${__url_time_range}",
       "targetBlank": false
     },
     {
-      "title": "24 Horas",
+      "title": "10 min",
       "type": "link",
-      "url": "/d/eletrometry-cabines?from=now-24h&to=now&${cabine:queryparam}&theme=light",
+      "url": "/d/eletrometry-cabines?from=now-10m&to=now&${cabine:queryparam}",
       "targetBlank": false
     },
     {
-      "title": "1 Semana",
+      "title": "1 hora",
       "type": "link",
-      "url": "/d/eletrometry-cabines?from=now-7d&to=now&${cabine:queryparam}&theme=light",
+      "url": "/d/eletrometry-cabines?from=now-1h&to=now&${cabine:queryparam}",
       "targetBlank": false
     },
     {
-      "title": "1 Mês",
+      "title": "24 horas",
       "type": "link",
-      "url": "/d/eletrometry-cabines?from=now-30d&to=now&${cabine:queryparam}&theme=light",
+      "url": "/d/eletrometry-cabines?from=now-24h&to=now&${cabine:queryparam}",
+      "targetBlank": false
+    },
+    {
+      "title": "1 semana",
+      "type": "link",
+      "url": "/d/eletrometry-cabines?from=now-7d&to=now&${cabine:queryparam}",
+      "targetBlank": false
+    },
+    {
+      "title": "1 mês",
+      "type": "link",
+      "url": "/d/eletrometry-cabines?from=now-30d&to=now&${cabine:queryparam}",
       "targetBlank": false
     }
   ],
   "panels": [
     {
       "id": 1,
-      "title": "Cabine ${cabine:text}",
-      "type": "canvas",
+      "title": "${cabine:text} · estado no fim do período",
+      "type": "stat",
       "gridPos": {
         "x": 0,
         "y": 0,
-        "w": 24,
-        "h": 2
+        "w": 4,
+        "h": 3
       },
-      "description": "Estado instantâneo = pior fase/tipo. Sem dados recentes se um canal estiver ausente ou com idade >60 s. Não confundir estado instantâneo com evento confirmado de 10 s.",
+      "description": "",
       "datasource": {
         "type": "mysql",
         "uid": "eletrometry-mysql"
@@ -83,7 +115,7 @@
             "type": "mysql",
             "uid": "eletrometry-mysql"
           },
-          "rawSql": "WITH\nraw AS (SELECT * FROM leituras WHERE cabine_id = ${cabine:sqlstring} AND coletado_em >= FROM_UNIXTIME(${__from}/1000.0) - INTERVAL 60 SECOND AND coletado_em <= LEAST(FROM_UNIXTIME(${__to}/1000.0), UTC_TIMESTAMP(3))),\nphases AS (SELECT event_id,cabine_id,tipo,coletado_em,recebido_em,'A' fase,CASE WHEN qualidade_a='ok' THEN fase_a END valor FROM raw UNION ALL SELECT event_id,cabine_id,tipo,coletado_em,recebido_em,'B' fase,CASE WHEN qualidade_b='ok' THEN fase_b END valor FROM raw UNION ALL SELECT event_id,cabine_id,tipo,coletado_em,recebido_em,'C' fase,CASE WHEN qualidade_c='ok' THEN fase_c END valor FROM raw),\nlimits AS (\n SELECT *,UNIX_TIMESTAMP(coletado_em) ts,\n CASE WHEN tipo='temperatura' THEN 60 ELSE (CASE cabine_id WHEN 'cabine-001' THEN 600.0 WHEN 'cabine-002' THEN 600.0 WHEN 'cabine-003' THEN 600.0 ELSE 600.0 END)*0.66 END ideal,\n CASE WHEN tipo='temperatura' THEN 70 ELSE (CASE cabine_id WHEN 'cabine-001' THEN 600.0 WHEN 'cabine-002' THEN 600.0 WHEN 'cabine-003' THEN 600.0 ELSE 600.0 END)*0.759 END lim1,\n CASE WHEN tipo='temperatura' THEN 80 ELSE (CASE cabine_id WHEN 'cabine-001' THEN 600.0 WHEN 'cabine-002' THEN 600.0 WHEN 'cabine-003' THEN 600.0 ELSE 600.0 END)*0.8580000000000001 END lim2,\n CASE WHEN tipo='temperatura' THEN 90 ELSE (CASE cabine_id WHEN 'cabine-001' THEN 600.0 WHEN 'cabine-002' THEN 600.0 WHEN 'cabine-003' THEN 600.0 ELSE 600.0 END)*0.957 END lim3\n FROM phases\n),\nlevels AS (\n SELECT *,CASE WHEN valor IS NULL THEN NULL WHEN valor>=lim3 THEN 3 WHEN valor>=lim2 THEN 2 WHEN valor>=lim1 THEN 1 ELSE 0 END severity,\n AVG(valor) OVER (PARTITION BY cabine_id,tipo,fase ORDER BY ts RANGE BETWEEN 10 PRECEDING AND 1 PRECEDING) baseline,\n MAX(CASE WHEN tipo='temperatura' THEN valor END) OVER (PARTITION BY cabine_id,fase ORDER BY ts RANGE BETWEEN 5 PRECEDING AND CURRENT ROW) temp_recent,\n LAG(ts) OVER w prev_ts,LEAD(ts) OVER w next_ts,\n LEAD(valor) OVER w next_val,\n ROW_NUMBER() OVER (PARTITION BY cabine_id,tipo,fase ORDER BY ts DESC,event_id DESC) rn\n FROM limits WINDOW w AS (PARTITION BY cabine_id,tipo,fase ORDER BY ts,event_id)\n),\nflags AS (\n SELECT *,LAG(severity) OVER (PARTITION BY cabine_id,tipo,fase ORDER BY ts,event_id) prev_severity,\n CASE WHEN next_val IS NOT NULL AND valor IS NOT NULL AND next_ts-ts<=5\n THEN GREATEST(0,LEAST(next_ts,UNIX_TIMESTAMP(LEAST(FROM_UNIXTIME(${__to}/1000.0), UTC_TIMESTAMP(3))))-GREATEST(ts,UNIX_TIMESTAMP(FROM_UNIXTIME(${__from}/1000.0)))) ELSE 0 END dt\n FROM levels\n),\ngroups_ AS (\n SELECT *,SUM(CASE WHEN severity>0 AND (COALESCE(prev_severity,0)=0 OR ts-prev_ts>5) THEN 1 ELSE 0 END)\n OVER (PARTITION BY cabine_id,tipo,fase ORDER BY ts,event_id) grp\n FROM flags\n),\nmarked AS (\n SELECT *,MIN(CASE WHEN severity>0 THEN ts END) OVER (PARTITION BY cabine_id,tipo,fase,grp) event_start\n FROM groups_\n),\nevent_groups AS (\n SELECT cabine_id,tipo,fase,grp,MIN(ts) first_ts,MAX(ts) last_ts,MAX(severity) severity,\n MAX(valor) peak,\n MIN(CASE WHEN ts-event_start>=10 OR (baseline>0 AND valor>=baseline*1.2 AND temp_recent>=70) THEN ts END) confirmed_ts,\n SUM(CASE WHEN severity=3 THEN dt ELSE 0 END) critical_seconds\n FROM marked WHERE severity>0 GROUP BY cabine_id,tipo,fase,grp\n),\nevents AS (\n SELECT * FROM event_groups WHERE confirmed_ts IS NOT NULL AND last_ts>=UNIX_TIMESTAMP(FROM_UNIXTIME(${__from}/1000.0))\n),\nlatest AS (SELECT * FROM levels WHERE rn=1 AND coletado_em>=FROM_UNIXTIME(${__from}/1000.0))\n,\nwide AS (\n SELECT tipo,ts,MAX(valor) valor,MAX(ideal) ideal,MAX(lim3) lim3,\n CASE WHEN COUNT(valor)=3 THEN AVG(valor) END mean_value\n FROM levels GROUP BY tipo,ts\n),\nwide_next AS (\n SELECT *,LEAD(ts) OVER w next_ts,LEAD(valor) OVER w next_val FROM wide WINDOW w AS (PARTITION BY tipo ORDER BY ts)\n),\nwide_time AS (\n SELECT *,CASE WHEN next_val IS NOT NULL AND valor IS NOT NULL AND next_ts-ts<=5\n THEN GREATEST(0,LEAST(next_ts,UNIX_TIMESTAMP(LEAST(FROM_UNIXTIME(${__to}/1000.0), UTC_TIMESTAMP(3))))-GREATEST(ts,UNIX_TIMESTAMP(FROM_UNIXTIME(${__from}/1000.0)))) ELSE 0 END dt\n FROM wide_next\n),\nnow_values AS (\n SELECT MAX(CASE WHEN tipo='temperatura' THEN valor END) temperatura,\n MAX(CASE WHEN tipo='corrente' THEN valor END) corrente,\n MAX(CASE WHEN tipo=${metrica:sqlstring} THEN valor END) valor_metrica,\n MAX(CASE WHEN tipo=${metrica:sqlstring} THEN ideal END) ideal_metrica,\n MAX(CASE WHEN tipo='corrente' AND fase='A' THEN valor END) corrente_a,\n MAX(CASE WHEN tipo='corrente' AND fase='B' THEN valor END) corrente_b,\n MAX(CASE WHEN tipo='corrente' AND fase='C' THEN valor END) corrente_c,\n MAX(CASE WHEN tipo='temperatura' AND fase='A' THEN valor END) temperatura_a,\n MAX(CASE WHEN tipo='temperatura' AND fase='B' THEN valor END) temperatura_b,\n MAX(CASE WHEN tipo='temperatura' AND fase='C' THEN valor END) temperatura_c,\n MAX(CASE WHEN tipo='corrente' AND fase='A' THEN UNIX_TIMESTAMP(LEAST(FROM_UNIXTIME(${__to}/1000.0), UTC_TIMESTAMP(3)))-ts END) idade_a,\n MAX(CASE WHEN tipo='corrente' AND fase='B' THEN UNIX_TIMESTAMP(LEAST(FROM_UNIXTIME(${__to}/1000.0), UTC_TIMESTAMP(3)))-ts END) idade_b,\n MAX(CASE WHEN tipo='corrente' AND fase='C' THEN UNIX_TIMESTAMP(LEAST(FROM_UNIXTIME(${__to}/1000.0), UTC_TIMESTAMP(3)))-ts END) idade_c,\n MAX(CASE WHEN tipo=${sensor:sqlstring} AND fase=${fase:sqlstring} THEN valor END) sensor_valor,\n MAX(CASE WHEN tipo=${sensor:sqlstring} AND fase=${fase:sqlstring} THEN UNIX_TIMESTAMP(LEAST(FROM_UNIXTIME(${__to}/1000.0), UTC_TIMESTAMP(3)))-ts END) sensor_idade,\n MAX(CASE WHEN tipo=${sensor:sqlstring} AND fase=${fase:sqlstring} THEN severity END) sensor_severity,\n CASE WHEN COUNT(valor)<6 OR MAX(UNIX_TIMESTAMP(LEAST(FROM_UNIXTIME(${__to}/1000.0), UTC_TIMESTAMP(3)))-ts)>60 THEN -1 ELSE MAX(severity) END estado,\n CASE WHEN COUNT(CASE WHEN tipo='corrente' THEN valor END)=3 THEN AVG(CASE WHEN tipo='corrente' THEN valor END) END media_fases\n FROM latest\n),\ndurations AS (\n SELECT SUM(CASE WHEN tipo=${metrica:sqlstring} AND valor>ideal THEN dt ELSE 0 END) tempo_desvio,\n SUM(CASE WHEN tipo=${metrica:sqlstring} AND valor>=lim3 THEN dt ELSE 0 END) tempo_critico\n FROM wide_time WHERE ts>=UNIX_TIMESTAMP(FROM_UNIXTIME(${__from}/1000.0))-5\n),\nload_stats AS (\n SELECT MAX(CASE WHEN ts>=UNIX_TIMESTAMP(LEAST(FROM_UNIXTIME(${__to}/1000.0), UTC_TIMESTAMP(3)))-86400 THEN mean_value END) pico,AVG(mean_value) padrao FROM wide_time\n WHERE tipo='corrente' AND ts>=UNIX_TIMESTAMP(FROM_UNIXTIME(${__from}/1000.0))\n),\npeak_stats AS (\n SELECT SUM(CASE WHEN w.mean_value>=l.pico*0.95 THEN w.dt ELSE 0 END) duracao_pico,\n MIN(CASE WHEN w.mean_value=l.pico THEN w.ts END) pico_ts\n FROM wide_time w CROSS JOIN load_stats l WHERE w.tipo='corrente' AND w.ts>=GREATEST(UNIX_TIMESTAMP(FROM_UNIXTIME(${__from}/1000.0)),UNIX_TIMESTAMP(LEAST(FROM_UNIXTIME(${__to}/1000.0), UTC_TIMESTAMP(3)))-86400)\n),\ntrend AS (\n SELECT (MAX(CASE WHEN rn=1 THEN valor END)-AVG(CASE WHEN ts BETWEEN UNIX_TIMESTAMP(LEAST(FROM_UNIXTIME(${__to}/1000.0), UTC_TIMESTAMP(3)))-65 AND UNIX_TIMESTAMP(LEAST(FROM_UNIXTIME(${__to}/1000.0), UTC_TIMESTAMP(3)))-55 THEN valor END)) taxa\n FROM (SELECT *,ROW_NUMBER() OVER (ORDER BY ts DESC) rn FROM wide WHERE tipo='temperatura') x\n),\nstuck AS (\n SELECT tipo,fase,CASE WHEN COUNT(valor)>=250 AND MAX(ts)-MIN(ts)>=300-5 AND MAX(valor)=MIN(valor) THEN 1 ELSE 0 END travado\n FROM levels WHERE ts>=UNIX_TIMESTAMP(LEAST(FROM_UNIXTIME(${__to}/1000.0), UTC_TIMESTAMP(3)))-300 GROUP BY tipo,fase\n)\nSELECT n.*,d.*,l.*,CASE WHEN ${sensor:sqlstring}='temperatura' THEN 120 ELSE 600 END sensor_max,\n CASE WHEN ${sensor:sqlstring}='temperatura' THEN 'celsius' ELSE 'amp' END sensor_unit,p.duracao_pico,FROM_UNIXTIME(p.pico_ts) pico_hora,\n n.valor_metrica-n.ideal_metrica desvio_atual,\n 90-n.temperatura margem,\n CASE WHEN n.temperatura IS NULL THEN NULL ELSE t.taxa END taxa,\n CASE WHEN t.taxa>0.05 THEN 'Alta' WHEN t.taxa< -0.05 THEN 'Queda' WHEN t.taxa IS NOT NULL THEN 'Estável' END tendencia,\n 100*GREATEST(ABS(n.corrente_a-n.media_fases),ABS(n.corrente_b-n.media_fases),ABS(n.corrente_c-n.media_fases))/NULLIF(n.media_fases,0) desequilibrio,\n CASE WHEN n.media_fases IS NULL OR n.media_fases=0 THEN NULL WHEN 100*GREATEST(ABS(n.corrente_a-n.media_fases),ABS(n.corrente_b-n.media_fases),ABS(n.corrente_c-n.media_fases))/NULLIF(n.media_fases,0)>=20 THEN 'CRÍTICO' WHEN 100*GREATEST(ABS(n.corrente_a-n.media_fases),ABS(n.corrente_b-n.media_fases),ABS(n.corrente_c-n.media_fases))/NULLIF(n.media_fases,0)>=10 THEN 'MODERADO' WHEN 100*GREATEST(ABS(n.corrente_a-n.media_fases),ABS(n.corrente_b-n.media_fases),ABS(n.corrente_c-n.media_fases))/NULLIF(n.media_fases,0)>5 THEN 'ATENÇÃO' ELSE 'NORMAL' END desequilibrio_status,\n n.corrente_a-n.media_fases delta_a,n.corrente_b-n.media_fases delta_b,n.corrente_c-n.media_fases delta_c,\n 100*(n.corrente_a-n.media_fases)/NULLIF(n.media_fases,0) delta_pct_a,\n 100*(n.corrente_b-n.media_fases)/NULLIF(n.media_fases,0) delta_pct_b,\n 100*(n.corrente_c-n.media_fases)/NULLIF(n.media_fases,0) delta_pct_c,\n CASE WHEN n.media_fases IS NULL THEN NULL WHEN n.corrente_a>=GREATEST(n.corrente_b,n.corrente_c) THEN 'R (A)' WHEN n.corrente_b>=n.corrente_c THEN 'S (B)' ELSE 'T (C)' END maior_fase,\n CASE WHEN n.sensor_valor IS NULL THEN 'Sem dados' WHEN n.sensor_idade>=60 THEN 'Sem atualização' WHEN n.sensor_idade>=15 THEN 'Atrasado'\n WHEN (SELECT travado FROM stuck WHERE tipo=${sensor:sqlstring} AND fase=${fase:sqlstring})=1 THEN 'Valor constante ≥5 min' ELSE 'Atualizando' END sensor_estado\n,\nCASE WHEN n.corrente_a IS NULL THEN 'Sem dados' WHEN n.idade_a>=60 THEN 'Sem atualização' WHEN n.idade_a>=15 THEN 'Atrasado' WHEN (SELECT travado FROM stuck WHERE tipo='corrente' AND fase='A')=1 THEN 'Constante ≥5 min' ELSE 'Atualizando' END saude_a,\nCASE WHEN n.corrente_b IS NULL THEN 'Sem dados' WHEN n.idade_b>=60 THEN 'Sem atualização' WHEN n.idade_b>=15 THEN 'Atrasado' WHEN (SELECT travado FROM stuck WHERE tipo='corrente' AND fase='B')=1 THEN 'Constante ≥5 min' ELSE 'Atualizando' END saude_b,\nCASE WHEN n.corrente_c IS NULL THEN 'Sem dados' WHEN n.idade_c>=60 THEN 'Sem atualização' WHEN n.idade_c>=15 THEN 'Atrasado' WHEN (SELECT travado FROM stuck WHERE tipo='corrente' AND fase='C')=1 THEN 'Constante ≥5 min' ELSE 'Atualizando' END saude_c\nFROM now_values n CROSS JOIN durations d CROSS JOIN load_stats l CROSS JOIN peak_stats p CROSS JOIN trend t\n",
+          "rawSql": "SELECT /*+ MAX_EXECUTION_TIME(15000) */ * FROM (WITH\nraw AS (SELECT * FROM leituras WHERE cabine_id = ${cabine:sqlstring} AND coletado_em >= FROM_UNIXTIME(${__from}/1000.0) - INTERVAL 60 SECOND AND coletado_em <= LEAST(FROM_UNIXTIME(${__to}/1000.0), UTC_TIMESTAMP(3))),\nphases AS (SELECT event_id,cabine_id,tipo,coletado_em,recebido_em,'A' fase,CASE WHEN qualidade_a='ok' THEN fase_a END valor FROM raw UNION ALL SELECT event_id,cabine_id,tipo,coletado_em,recebido_em,'B' fase,CASE WHEN qualidade_b='ok' THEN fase_b END valor FROM raw UNION ALL SELECT event_id,cabine_id,tipo,coletado_em,recebido_em,'C' fase,CASE WHEN qualidade_c='ok' THEN fase_c END valor FROM raw),\nlimits AS (\n SELECT *,UNIX_TIMESTAMP(coletado_em) ts,\n CASE WHEN tipo='temperatura' THEN 60 ELSE (CASE cabine_id WHEN 'cabine-001' THEN 600.0 WHEN 'cabine-002' THEN 600.0 WHEN 'cabine-003' THEN 600.0 ELSE 600.0 END)*0.66 END ideal,\n CASE WHEN tipo='temperatura' THEN 70 ELSE (CASE cabine_id WHEN 'cabine-001' THEN 600.0 WHEN 'cabine-002' THEN 600.0 WHEN 'cabine-003' THEN 600.0 ELSE 600.0 END)*0.759 END lim1,\n CASE WHEN tipo='temperatura' THEN 80 ELSE (CASE cabine_id WHEN 'cabine-001' THEN 600.0 WHEN 'cabine-002' THEN 600.0 WHEN 'cabine-003' THEN 600.0 ELSE 600.0 END)*0.8580000000000001 END lim2,\n CASE WHEN tipo='temperatura' THEN 90 ELSE (CASE cabine_id WHEN 'cabine-001' THEN 600.0 WHEN 'cabine-002' THEN 600.0 WHEN 'cabine-003' THEN 600.0 ELSE 600.0 END)*0.957 END lim3\n FROM phases\n),\nlevels AS (\n SELECT *,CASE WHEN valor IS NULL THEN NULL WHEN valor>=lim3 THEN 3 WHEN valor>=lim2 THEN 2 WHEN valor>=lim1 THEN 1 ELSE 0 END severity,\n AVG(valor) OVER (PARTITION BY cabine_id,tipo,fase ORDER BY ts RANGE BETWEEN 10 PRECEDING AND 1 PRECEDING) baseline,\n MAX(CASE WHEN tipo='temperatura' THEN valor END) OVER (PARTITION BY cabine_id,fase ORDER BY ts RANGE BETWEEN 5 PRECEDING AND CURRENT ROW) temp_recent,\n LAG(ts) OVER w prev_ts,LEAD(ts) OVER w next_ts,\n LEAD(valor) OVER w next_val,\n ROW_NUMBER() OVER (PARTITION BY cabine_id,tipo,fase ORDER BY ts DESC,event_id DESC) rn\n FROM limits WINDOW w AS (PARTITION BY cabine_id,tipo,fase ORDER BY ts,event_id)\n),\nflags AS (\n SELECT *,LAG(severity) OVER (PARTITION BY cabine_id,tipo,fase ORDER BY ts,event_id) prev_severity,\n CASE WHEN next_val IS NOT NULL AND valor IS NOT NULL AND next_ts-ts<=5\n THEN GREATEST(0,LEAST(next_ts,UNIX_TIMESTAMP(LEAST(FROM_UNIXTIME(${__to}/1000.0), UTC_TIMESTAMP(3))))-GREATEST(ts,UNIX_TIMESTAMP(FROM_UNIXTIME(${__from}/1000.0)))) ELSE 0 END dt\n FROM levels\n),\ngroups_ AS (\n SELECT *,SUM(CASE WHEN severity>0 AND (COALESCE(prev_severity,0)=0 OR ts-prev_ts>5) THEN 1 ELSE 0 END)\n OVER (PARTITION BY cabine_id,tipo,fase ORDER BY ts,event_id) grp\n FROM flags\n),\nmarked AS (\n SELECT *,MIN(CASE WHEN severity>0 THEN ts END) OVER (PARTITION BY cabine_id,tipo,fase,grp) event_start\n FROM groups_\n),\nevent_groups AS (\n SELECT cabine_id,tipo,fase,grp,MIN(ts) first_ts,MAX(ts) last_ts,MAX(severity) severity,\n MAX(valor) peak,\n MIN(CASE WHEN ts-event_start>=10 OR (baseline>0 AND valor>=baseline*1.2 AND temp_recent>=70) THEN ts END) confirmed_ts,\n SUM(CASE WHEN severity=3 THEN dt ELSE 0 END) critical_seconds\n FROM marked WHERE severity>0 GROUP BY cabine_id,tipo,fase,grp\n),\nevents AS (\n SELECT * FROM event_groups WHERE confirmed_ts IS NOT NULL AND last_ts>=UNIX_TIMESTAMP(FROM_UNIXTIME(${__from}/1000.0))\n),\nlatest AS (SELECT * FROM levels WHERE rn=1 AND coletado_em>=FROM_UNIXTIME(${__from}/1000.0))\n,\nwide AS (\n SELECT tipo,ts,MAX(valor) valor,MAX(ideal) ideal,MAX(lim3) lim3,\n CASE WHEN COUNT(valor)=3 THEN AVG(valor) END mean_value\n FROM levels GROUP BY tipo,ts\n),\nwide_next AS (\n SELECT *,LEAD(ts) OVER w next_ts,LEAD(valor) OVER w next_val FROM wide WINDOW w AS (PARTITION BY tipo ORDER BY ts)\n),\nwide_time AS (\n SELECT *,CASE WHEN next_val IS NOT NULL AND valor IS NOT NULL AND next_ts-ts<=5\n THEN GREATEST(0,LEAST(next_ts,UNIX_TIMESTAMP(LEAST(FROM_UNIXTIME(${__to}/1000.0), UTC_TIMESTAMP(3))))-GREATEST(ts,UNIX_TIMESTAMP(FROM_UNIXTIME(${__from}/1000.0)))) ELSE 0 END dt\n FROM wide_next\n),\nnow_values AS (\n SELECT MAX(CASE WHEN tipo='temperatura' THEN valor END) temperatura,\n MAX(CASE WHEN tipo='corrente' THEN valor END) corrente,\n MAX(CASE WHEN tipo=${metrica:sqlstring} THEN valor END) valor_metrica,\n MAX(CASE WHEN tipo=${metrica:sqlstring} THEN ideal END) ideal_metrica,\n MAX(CASE WHEN tipo='corrente' AND fase='A' THEN valor END) corrente_a,\n MAX(CASE WHEN tipo='corrente' AND fase='B' THEN valor END) corrente_b,\n MAX(CASE WHEN tipo='corrente' AND fase='C' THEN valor END) corrente_c,\n MAX(CASE WHEN tipo='temperatura' AND fase='A' THEN valor END) temperatura_a,\n MAX(CASE WHEN tipo='temperatura' AND fase='B' THEN valor END) temperatura_b,\n MAX(CASE WHEN tipo='temperatura' AND fase='C' THEN valor END) temperatura_c,\n MAX(CASE WHEN tipo='corrente' AND fase='A' THEN UNIX_TIMESTAMP(LEAST(FROM_UNIXTIME(${__to}/1000.0), UTC_TIMESTAMP(3)))-ts END) idade_a,\n MAX(CASE WHEN tipo='corrente' AND fase='B' THEN UNIX_TIMESTAMP(LEAST(FROM_UNIXTIME(${__to}/1000.0), UTC_TIMESTAMP(3)))-ts END) idade_b,\n MAX(CASE WHEN tipo='corrente' AND fase='C' THEN UNIX_TIMESTAMP(LEAST(FROM_UNIXTIME(${__to}/1000.0), UTC_TIMESTAMP(3)))-ts END) idade_c,\n MAX(CASE WHEN tipo=${sensor:sqlstring} AND fase=${fase:sqlstring} THEN valor END) sensor_valor,\n MAX(CASE WHEN tipo=${sensor:sqlstring} AND fase=${fase:sqlstring} THEN UNIX_TIMESTAMP(LEAST(FROM_UNIXTIME(${__to}/1000.0), UTC_TIMESTAMP(3)))-ts END) sensor_idade,\n MAX(CASE WHEN tipo=${sensor:sqlstring} AND fase=${fase:sqlstring} THEN severity END) sensor_severity,\n CASE WHEN COUNT(valor)<6 OR MAX(UNIX_TIMESTAMP(LEAST(FROM_UNIXTIME(${__to}/1000.0), UTC_TIMESTAMP(3)))-ts)>60 THEN -1 ELSE MAX(severity) END estado,\n CASE WHEN COUNT(CASE WHEN tipo='corrente' THEN valor END)=3 THEN AVG(CASE WHEN tipo='corrente' THEN valor END) END media_fases\n FROM latest\n),\ndurations AS (\n SELECT SUM(CASE WHEN tipo=${metrica:sqlstring} AND valor>ideal THEN dt ELSE 0 END) tempo_desvio,\n SUM(CASE WHEN tipo=${metrica:sqlstring} AND valor>=lim3 THEN dt ELSE 0 END) tempo_critico\n FROM wide_time WHERE ts>=UNIX_TIMESTAMP(FROM_UNIXTIME(${__from}/1000.0))-5\n),\nload_stats AS (\n SELECT MAX(CASE WHEN ts>=UNIX_TIMESTAMP(LEAST(FROM_UNIXTIME(${__to}/1000.0), UTC_TIMESTAMP(3)))-86400 THEN mean_value END) pico,AVG(mean_value) padrao FROM wide_time\n WHERE tipo='corrente' AND ts>=UNIX_TIMESTAMP(FROM_UNIXTIME(${__from}/1000.0))\n),\npeak_stats AS (\n SELECT SUM(CASE WHEN w.mean_value>=l.pico*0.95 THEN w.dt ELSE 0 END) duracao_pico,\n MIN(CASE WHEN w.mean_value=l.pico THEN w.ts END) pico_ts\n FROM wide_time w CROSS JOIN load_stats l WHERE w.tipo='corrente' AND w.ts>=GREATEST(UNIX_TIMESTAMP(FROM_UNIXTIME(${__from}/1000.0)),UNIX_TIMESTAMP(LEAST(FROM_UNIXTIME(${__to}/1000.0), UTC_TIMESTAMP(3)))-86400)\n),\ntrend AS (\n SELECT (MAX(CASE WHEN rn=1 THEN valor END)-AVG(CASE WHEN ts BETWEEN UNIX_TIMESTAMP(LEAST(FROM_UNIXTIME(${__to}/1000.0), UTC_TIMESTAMP(3)))-65 AND UNIX_TIMESTAMP(LEAST(FROM_UNIXTIME(${__to}/1000.0), UTC_TIMESTAMP(3)))-55 THEN valor END)) taxa\n FROM (SELECT *,ROW_NUMBER() OVER (ORDER BY ts DESC) rn FROM wide WHERE tipo='temperatura') x\n),\nstuck AS (\n SELECT tipo,fase,CASE WHEN COUNT(valor)>=250 AND MAX(ts)-MIN(ts)>=300-5 AND MAX(valor)=MIN(valor) THEN 1 ELSE 0 END travado\n FROM levels WHERE ts>=UNIX_TIMESTAMP(LEAST(FROM_UNIXTIME(${__to}/1000.0), UTC_TIMESTAMP(3)))-300 GROUP BY tipo,fase\n)\nSELECT n.*,d.*,l.*,CASE WHEN ${sensor:sqlstring}='temperatura' THEN 120 ELSE 600 END sensor_max,\n CASE WHEN ${sensor:sqlstring}='temperatura' THEN 'celsius' ELSE 'amp' END sensor_unit,p.duracao_pico,FROM_UNIXTIME(p.pico_ts) pico_hora,\n n.valor_metrica-n.ideal_metrica desvio_atual,\n 90-n.temperatura margem,\n CASE WHEN n.temperatura IS NULL THEN NULL ELSE t.taxa END taxa,\n CASE WHEN t.taxa>0.05 THEN 'Alta' WHEN t.taxa< -0.05 THEN 'Queda' WHEN t.taxa IS NOT NULL THEN 'Estável' END tendencia,\n 100*GREATEST(ABS(n.corrente_a-n.media_fases),ABS(n.corrente_b-n.media_fases),ABS(n.corrente_c-n.media_fases))/NULLIF(n.media_fases,0) desequilibrio,\n CASE WHEN n.media_fases IS NULL OR n.media_fases=0 THEN NULL WHEN 100*GREATEST(ABS(n.corrente_a-n.media_fases),ABS(n.corrente_b-n.media_fases),ABS(n.corrente_c-n.media_fases))/NULLIF(n.media_fases,0)>=20 THEN 'CRÍTICO' WHEN 100*GREATEST(ABS(n.corrente_a-n.media_fases),ABS(n.corrente_b-n.media_fases),ABS(n.corrente_c-n.media_fases))/NULLIF(n.media_fases,0)>=10 THEN 'MODERADO' WHEN 100*GREATEST(ABS(n.corrente_a-n.media_fases),ABS(n.corrente_b-n.media_fases),ABS(n.corrente_c-n.media_fases))/NULLIF(n.media_fases,0)>5 THEN 'ATENÇÃO' ELSE 'NORMAL' END desequilibrio_status,\n n.corrente_a-n.media_fases delta_a,n.corrente_b-n.media_fases delta_b,n.corrente_c-n.media_fases delta_c,\n 100*(n.corrente_a-n.media_fases)/NULLIF(n.media_fases,0) delta_pct_a,\n 100*(n.corrente_b-n.media_fases)/NULLIF(n.media_fases,0) delta_pct_b,\n 100*(n.corrente_c-n.media_fases)/NULLIF(n.media_fases,0) delta_pct_c,\n CASE WHEN n.media_fases IS NULL THEN NULL WHEN n.corrente_a>=GREATEST(n.corrente_b,n.corrente_c) THEN 'R (A)' WHEN n.corrente_b>=n.corrente_c THEN 'S (B)' ELSE 'T (C)' END maior_fase,\n CASE WHEN n.sensor_valor IS NULL THEN 'Sem dados' WHEN n.sensor_idade>=60 THEN 'Sem atualização' WHEN n.sensor_idade>=15 THEN 'Atrasado'\n WHEN (SELECT travado FROM stuck WHERE tipo=${sensor:sqlstring} AND fase=${fase:sqlstring})=1 THEN 'Valor constante ≥5 min' ELSE 'Atualizando' END sensor_estado\n,\nCASE WHEN n.corrente_a IS NULL THEN 'Sem dados' WHEN n.idade_a>=60 THEN 'Sem atualização' WHEN n.idade_a>=15 THEN 'Atrasado' WHEN (SELECT travado FROM stuck WHERE tipo='corrente' AND fase='A')=1 THEN 'Constante ≥5 min' ELSE 'Atualizando' END saude_a,\nCASE WHEN n.corrente_b IS NULL THEN 'Sem dados' WHEN n.idade_b>=60 THEN 'Sem atualização' WHEN n.idade_b>=15 THEN 'Atrasado' WHEN (SELECT travado FROM stuck WHERE tipo='corrente' AND fase='B')=1 THEN 'Constante ≥5 min' ELSE 'Atualizando' END saude_b,\nCASE WHEN n.corrente_c IS NULL THEN 'Sem dados' WHEN n.idade_c>=60 THEN 'Sem atualização' WHEN n.idade_c>=15 THEN 'Atrasado' WHEN (SELECT travado FROM stuck WHERE tipo='corrente' AND fase='C')=1 THEN 'Constante ≥5 min' ELSE 'Atualizando' END saude_c\nFROM now_values n CROSS JOIN durations d CROSS JOIN load_stats l CROSS JOIN peak_stats p CROSS JOIN trend t\n) bounded_query",
           "format": "table",
           "editorMode": "code",
           "rawQuery": true
@@ -96,7 +128,7 @@
           "noValue": "Sem dados",
           "color": {
             "mode": "fixed",
-            "fixedColor": "#20234F"
+            "fixedColor": "text"
           },
           "mappings": []
         },
@@ -107,6 +139,14 @@
               "options": "estado"
             },
             "properties": [
+              {
+                "id": "unit",
+                "value": "none"
+              },
+              {
+                "id": "decimals",
+                "value": 0
+              },
               {
                 "id": "color",
                 "value": {
@@ -144,23 +184,23 @@
                     "type": "value",
                     "options": {
                       "-1": {
-                        "text": "SEM DADOS RECENTES",
+                        "text": "Sem dados recentes",
                         "color": "gray"
                       },
                       "0": {
-                        "text": "NORMAL",
+                        "text": "Normal",
                         "color": "green"
                       },
                       "1": {
-                        "text": "ATENÇÃO",
+                        "text": "Atenção",
                         "color": "yellow"
                       },
                       "2": {
-                        "text": "MODERADO",
+                        "text": "Moderado",
                         "color": "orange"
                       },
                       "3": {
-                        "text": "CRÍTICO",
+                        "text": "Crítico",
                         "color": "red"
                       }
                     }
@@ -172,117 +212,57 @@
         ]
       },
       "options": {
-        "inlineEditing": false,
-        "panZoom": false,
-        "zoomToContent": true,
-        "showAdvancedTypes": false,
-        "tooltip": {
-          "mode": "single",
-          "disableForOneClick": true
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "/.*/",
+          "values": false
         },
-        "root": {
-          "name": "Eletrometry",
-          "type": "frame",
-          "placement": {
-            "left": 0,
-            "top": 0,
-            "width": 1540,
-            "height": 50
-          },
-          "background": {
-            "color": {
-              "fixed": "#FFFFFF"
-            }
-          },
-          "elements": [
-            {
-              "name": "⚡ DASHBOARD — ANALISTA INTERNA-12-4",
-              "type": "text",
-              "placement": {
-                "left": 12,
-                "top": 4,
-                "width": 950,
-                "height": 40
-              },
-              "constraint": {
-                "horizontal": "scale",
-                "vertical": "scale"
-              },
-              "background": {
-                "color": {
-                  "fixed": "transparent"
-                }
-              },
-              "border": {
-                "radius": 8,
-                "width": 0
-              },
-              "config": {
-                "text": {
-                  "mode": "fixed",
-                  "fixed": "⚡ DASHBOARD — ANALISTA INTERNA"
-                },
-                "align": "left",
-                "valign": "middle",
-                "size": 24,
-                "color": {
-                  "fixed": "#20234F"
-                }
-              }
-            },
-            {
-              "name": "estado-1110-4",
-              "type": "metric-value",
-              "placement": {
-                "left": 1110,
-                "top": 4,
-                "width": 390,
-                "height": 40
-              },
-              "constraint": {
-                "horizontal": "scale",
-                "vertical": "scale"
-              },
-              "background": {
-                "color": {
-                  "fixed": "transparent"
-                }
-              },
-              "border": {
-                "radius": 8,
-                "width": 0
-              },
-              "config": {
-                "text": {
-                  "mode": "field",
-                  "field": "estado",
-                  "fixed": ""
-                },
-                "align": "left",
-                "valign": "middle",
-                "size": 20,
-                "color": {
-                  "field": "estado",
-                  "fixed": "#20234F"
-                }
-              }
-            }
-          ]
+        "colorMode": "value",
+        "graphMode": "none",
+        "textMode": "value",
+        "justifyMode": "center",
+        "orientation": "auto",
+        "wideLayout": false,
+        "text": {
+          "valueSize": 22,
+          "titleSize": 12
         }
       },
-      "pluginVersion": "12.2.0"
+      "pluginVersion": "12.2.0",
+      "transformations": [
+        {
+          "id": "filterFieldsByName",
+          "options": {
+            "include": {
+              "names": [
+                "estado"
+              ]
+            }
+          }
+        },
+        {
+          "id": "organize",
+          "options": {
+            "indexByName": {
+              "estado": 0
+            }
+          }
+        }
+      ]
     },
     {
       "id": 2,
-      "title": "Temperatura da cabine · ideal 60 °C",
+      "title": "Temperatura · maior fase · ideal 60 °C",
       "type": "bargauge",
       "gridPos": {
-        "x": 0,
-        "y": 2,
-        "w": 12,
-        "h": 4
+        "x": 4,
+        "y": 0,
+        "w": 10,
+        "h": 3
       },
-      "description": "Maior valor válido entre as três fases. Limites provisórios; capacidade inicial de 600 A por fase.",
+      "description": "Regras: REGRAS-DASHBOARDS.md",
       "datasource": {
         "type": "datasource",
         "uid": "-- Dashboard --"
@@ -338,20 +318,17 @@
           "calcs": [
             "lastNotNull"
           ],
-          "fields": "temperatura",
+          "fields": "/.*/",
           "values": false
         },
-        "colorMode": "value",
-        "graphMode": "none",
-        "textMode": "value",
-        "justifyMode": "center",
         "orientation": "horizontal",
-        "displayMode": "gradient",
+        "displayMode": "basic",
         "showUnfilled": true,
-        "minVizHeight": 20,
-        "minVizWidth": 0,
-        "sizing": "auto",
-        "valueMode": "color"
+        "valueMode": "color",
+        "namePlacement": "hidden",
+        "sizing": "manual",
+        "minVizHeight": 16,
+        "maxVizHeight": 22
       },
       "pluginVersion": "12.2.0",
       "transformations": [
@@ -364,20 +341,28 @@
               ]
             }
           }
+        },
+        {
+          "id": "organize",
+          "options": {
+            "indexByName": {
+              "temperatura": 0
+            }
+          }
         }
       ]
     },
     {
       "id": 3,
-      "title": "Corrente da cabine · ideal 396.0 A",
+      "title": "Corrente · maior fase · ideal 396 A",
       "type": "bargauge",
       "gridPos": {
-        "x": 12,
-        "y": 2,
-        "w": 12,
-        "h": 4
+        "x": 14,
+        "y": 0,
+        "w": 10,
+        "h": 3
       },
-      "description": "Maior valor válido entre as três fases. Limites provisórios; capacidade inicial de 600 A por fase.",
+      "description": "Regras: REGRAS-DASHBOARDS.md",
       "datasource": {
         "type": "datasource",
         "uid": "-- Dashboard --"
@@ -433,20 +418,17 @@
           "calcs": [
             "lastNotNull"
           ],
-          "fields": "corrente",
+          "fields": "/.*/",
           "values": false
         },
-        "colorMode": "value",
-        "graphMode": "none",
-        "textMode": "value",
-        "justifyMode": "center",
         "orientation": "horizontal",
-        "displayMode": "gradient",
+        "displayMode": "basic",
         "showUnfilled": true,
-        "minVizHeight": 20,
-        "minVizWidth": 0,
-        "sizing": "auto",
-        "valueMode": "color"
+        "valueMode": "color",
+        "namePlacement": "hidden",
+        "sizing": "manual",
+        "minVizHeight": 16,
+        "maxVizHeight": 22
       },
       "pluginVersion": "12.2.0",
       "transformations": [
@@ -459,20 +441,108 @@
               ]
             }
           }
+        },
+        {
+          "id": "organize",
+          "options": {
+            "indexByName": {
+              "corrente": 0
+            }
+          }
         }
       ]
     },
     {
       "id": 4,
-      "title": "Tempo total de Desvio · ${metrica:text}",
-      "type": "canvas",
+      "title": "Tempo acima do ideal · ${metrica:text}",
+      "type": "stat",
       "gridPos": {
         "x": 0,
-        "y": 6,
-        "w": 8,
-        "h": 6
+        "y": 3,
+        "w": 4,
+        "h": 4
       },
-      "description": "Duração observada com a maior fase acima do ideal; união entre fases, sem triplicar segundos. Lacunas >5 s não são contabilizadas. Seletor de métrica acima.",
+      "description": "Regras: REGRAS-DASHBOARDS.md",
+      "datasource": {
+        "type": "datasource",
+        "uid": "-- Dashboard --"
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "datasource",
+            "uid": "-- Dashboard --"
+          },
+          "panelId": 1,
+          "withTransforms": false
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "dtdhms",
+          "decimals": 0,
+          "noValue": "Sem dados",
+          "color": {
+            "mode": "fixed",
+            "fixedColor": "#1264F5"
+          },
+          "mappings": []
+        },
+        "overrides": []
+      },
+      "options": {
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "/.*/",
+          "values": false
+        },
+        "colorMode": "value",
+        "graphMode": "none",
+        "textMode": "value",
+        "justifyMode": "center",
+        "orientation": "auto",
+        "wideLayout": false,
+        "text": {
+          "valueSize": 22,
+          "titleSize": 12
+        }
+      },
+      "pluginVersion": "12.2.0",
+      "transformations": [
+        {
+          "id": "filterFieldsByName",
+          "options": {
+            "include": {
+              "names": [
+                "tempo_desvio"
+              ]
+            }
+          }
+        },
+        {
+          "id": "organize",
+          "options": {
+            "indexByName": {
+              "tempo_desvio": 0
+            }
+          }
+        }
+      ]
+    },
+    {
+      "id": 13,
+      "title": "Desvio atual · ${metrica:text} (°C / A)",
+      "type": "stat",
+      "gridPos": {
+        "x": 4,
+        "y": 3,
+        "w": 4,
+        "h": 4
+      },
+      "description": "Regras: REGRAS-DASHBOARDS.md",
       "datasource": {
         "type": "datasource",
         "uid": "-- Dashboard --"
@@ -495,369 +565,144 @@
           "noValue": "Sem dados",
           "color": {
             "mode": "fixed",
-            "fixedColor": "#20234F"
+            "fixedColor": "#1264F5"
           },
           "mappings": []
         },
-        "overrides": [
-          {
-            "matcher": {
-              "id": "byName",
-              "options": "tempo_desvio"
-            },
-            "properties": [
-              {
-                "id": "unit",
-                "value": "dtdhms"
-              },
-              {
-                "id": "decimals",
-                "value": 0
-              },
-              {
-                "id": "color",
-                "value": {
-                  "mode": "fixed",
-                  "fixedColor": "#1264F5"
-                }
-              }
-            ]
-          },
-          {
-            "matcher": {
-              "id": "byName",
-              "options": "tempo_critico"
-            },
-            "properties": [
-              {
-                "id": "unit",
-                "value": "dtdhms"
-              },
-              {
-                "id": "decimals",
-                "value": 0
-              },
-              {
-                "id": "color",
-                "value": {
-                  "mode": "fixed",
-                  "fixedColor": "red"
-                }
-              }
-            ]
-          },
-          {
-            "matcher": {
-              "id": "byName",
-              "options": "desvio_atual"
-            },
-            "properties": [
-              {
-                "id": "decimals",
-                "value": 1
-              },
-              {
-                "id": "color",
-                "value": {
-                  "mode": "fixed",
-                  "fixedColor": "#1264F5"
-                }
-              }
-            ]
-          }
-        ]
+        "overrides": []
       },
       "options": {
-        "inlineEditing": false,
-        "panZoom": false,
-        "zoomToContent": true,
-        "showAdvancedTypes": false,
-        "tooltip": {
-          "mode": "single",
-          "disableForOneClick": true
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "/.*/",
+          "values": false
         },
-        "root": {
-          "name": "Eletrometry",
-          "type": "frame",
-          "placement": {
-            "left": 0,
-            "top": 0,
-            "width": 510,
-            "height": 190
-          },
-          "background": {
-            "color": {
-              "fixed": "#FFFFFF"
-            }
-          },
-          "elements": [
-            {
-              "name": "Desde o início do período-12-2",
-              "type": "text",
-              "placement": {
-                "left": 12,
-                "top": 2,
-                "width": 440,
-                "height": 24
-              },
-              "constraint": {
-                "horizontal": "scale",
-                "vertical": "scale"
-              },
-              "background": {
-                "color": {
-                  "fixed": "transparent"
-                }
-              },
-              "border": {
-                "radius": 8,
-                "width": 0
-              },
-              "config": {
-                "text": {
-                  "mode": "fixed",
-                  "fixed": "Desde o início do período"
-                },
-                "align": "left",
-                "valign": "middle",
-                "size": 13,
-                "color": {
-                  "fixed": "#77859F"
-                }
-              }
-            },
-            {
-              "name": "Acima do ideal-12-39",
-              "type": "text",
-              "placement": {
-                "left": 12,
-                "top": 39,
-                "width": 240,
-                "height": 22
-              },
-              "constraint": {
-                "horizontal": "scale",
-                "vertical": "scale"
-              },
-              "background": {
-                "color": {
-                  "fixed": "transparent"
-                }
-              },
-              "border": {
-                "radius": 8,
-                "width": 0
-              },
-              "config": {
-                "text": {
-                  "mode": "fixed",
-                  "fixed": "Acima do ideal"
-                },
-                "align": "left",
-                "valign": "middle",
-                "size": 15,
-                "color": {
-                  "fixed": "#1264F5"
-                }
-              }
-            },
-            {
-              "name": "tempo_desvio-12-67",
-              "type": "metric-value",
-              "placement": {
-                "left": 12,
-                "top": 67,
-                "width": 265,
-                "height": 51
-              },
-              "constraint": {
-                "horizontal": "scale",
-                "vertical": "scale"
-              },
-              "background": {
-                "color": {
-                  "fixed": "transparent"
-                }
-              },
-              "border": {
-                "radius": 8,
-                "width": 0
-              },
-              "config": {
-                "text": {
-                  "mode": "field",
-                  "field": "tempo_desvio",
-                  "fixed": ""
-                },
-                "align": "left",
-                "valign": "middle",
-                "size": 35,
-                "color": {
-                  "field": "tempo_desvio",
-                  "fixed": "#20234F"
-                }
-              }
-            },
-            {
-              "name": "Desvio atual (°C ou A)-285-36",
-              "type": "text",
-              "placement": {
-                "left": 285,
-                "top": 36,
-                "width": 205,
-                "height": 24
-              },
-              "constraint": {
-                "horizontal": "scale",
-                "vertical": "scale"
-              },
-              "background": {
-                "color": {
-                  "fixed": "transparent"
-                }
-              },
-              "border": {
-                "radius": 8,
-                "width": 0
-              },
-              "config": {
-                "text": {
-                  "mode": "fixed",
-                  "fixed": "Desvio atual (°C ou A)"
-                },
-                "align": "left",
-                "valign": "middle",
-                "size": 14,
-                "color": {
-                  "fixed": "#20234F"
-                }
-              }
-            },
-            {
-              "name": "desvio_atual-285-62",
-              "type": "metric-value",
-              "placement": {
-                "left": 285,
-                "top": 62,
-                "width": 205,
-                "height": 40
-              },
-              "constraint": {
-                "horizontal": "scale",
-                "vertical": "scale"
-              },
-              "background": {
-                "color": {
-                  "fixed": "transparent"
-                }
-              },
-              "border": {
-                "radius": 8,
-                "width": 0
-              },
-              "config": {
-                "text": {
-                  "mode": "field",
-                  "field": "desvio_atual",
-                  "fixed": ""
-                },
-                "align": "left",
-                "valign": "middle",
-                "size": 29,
-                "color": {
-                  "field": "desvio_atual",
-                  "fixed": "#20234F"
-                }
-              }
-            },
-            {
-              "name": "Em nível crítico-285-113",
-              "type": "text",
-              "placement": {
-                "left": 285,
-                "top": 113,
-                "width": 205,
-                "height": 24
-              },
-              "constraint": {
-                "horizontal": "scale",
-                "vertical": "scale"
-              },
-              "background": {
-                "color": {
-                  "fixed": "transparent"
-                }
-              },
-              "border": {
-                "radius": 8,
-                "width": 0
-              },
-              "config": {
-                "text": {
-                  "mode": "fixed",
-                  "fixed": "Em nível crítico"
-                },
-                "align": "left",
-                "valign": "middle",
-                "size": 14,
-                "color": {
-                  "fixed": "#20234F"
-                }
-              }
-            },
-            {
-              "name": "tempo_critico-285-140",
-              "type": "metric-value",
-              "placement": {
-                "left": 285,
-                "top": 140,
-                "width": 205,
-                "height": 40
-              },
-              "constraint": {
-                "horizontal": "scale",
-                "vertical": "scale"
-              },
-              "background": {
-                "color": {
-                  "fixed": "transparent"
-                }
-              },
-              "border": {
-                "radius": 8,
-                "width": 0
-              },
-              "config": {
-                "text": {
-                  "mode": "field",
-                  "field": "tempo_critico",
-                  "fixed": ""
-                },
-                "align": "left",
-                "valign": "middle",
-                "size": 25,
-                "color": {
-                  "field": "tempo_critico",
-                  "fixed": "#20234F"
-                }
-              }
-            }
-          ]
+        "colorMode": "value",
+        "graphMode": "none",
+        "textMode": "value",
+        "justifyMode": "center",
+        "orientation": "auto",
+        "wideLayout": false,
+        "text": {
+          "valueSize": 22,
+          "titleSize": 12
         }
       },
-      "pluginVersion": "12.2.0"
+      "pluginVersion": "12.2.0",
+      "transformations": [
+        {
+          "id": "filterFieldsByName",
+          "options": {
+            "include": {
+              "names": [
+                "desvio_atual"
+              ]
+            }
+          }
+        },
+        {
+          "id": "organize",
+          "options": {
+            "indexByName": {
+              "desvio_atual": 0
+            }
+          }
+        }
+      ]
+    },
+    {
+      "id": 14,
+      "title": "Tempo em crítico · ${metrica:text}",
+      "type": "stat",
+      "gridPos": {
+        "x": 8,
+        "y": 3,
+        "w": 4,
+        "h": 4
+      },
+      "description": "Regras: REGRAS-DASHBOARDS.md",
+      "datasource": {
+        "type": "datasource",
+        "uid": "-- Dashboard --"
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "datasource",
+            "uid": "-- Dashboard --"
+          },
+          "panelId": 1,
+          "withTransforms": false
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "dtdhms",
+          "decimals": 0,
+          "noValue": "Sem dados",
+          "color": {
+            "mode": "fixed",
+            "fixedColor": "red"
+          },
+          "mappings": []
+        },
+        "overrides": []
+      },
+      "options": {
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "/.*/",
+          "values": false
+        },
+        "colorMode": "value",
+        "graphMode": "none",
+        "textMode": "value",
+        "justifyMode": "center",
+        "orientation": "auto",
+        "wideLayout": false,
+        "text": {
+          "valueSize": 22,
+          "titleSize": 12
+        }
+      },
+      "pluginVersion": "12.2.0",
+      "transformations": [
+        {
+          "id": "filterFieldsByName",
+          "options": {
+            "include": {
+              "names": [
+                "tempo_critico"
+              ]
+            }
+          }
+        },
+        {
+          "id": "organize",
+          "options": {
+            "indexByName": {
+              "tempo_critico": 0
+            }
+          }
+        }
+      ]
     },
     {
       "id": 5,
-      "title": "Margem de Ação – Temperatura",
-      "type": "canvas",
+      "title": "Margem até 90 °C",
+      "type": "stat",
       "gridPos": {
-        "x": 8,
-        "y": 6,
-        "w": 8,
-        "h": 6
+        "x": 12,
+        "y": 3,
+        "w": 4,
+        "h": 4
       },
-      "description": "Margem=90°C−maior temperatura. Taxa=temperatura atual−média entre 55 e 65 s atrás, em °C/min. Tendência estável entre −0,05 e +0,05°C/min.",
+      "description": "",
       "datasource": {
         "type": "datasource",
         "uid": "-- Dashboard --"
@@ -875,346 +720,241 @@
       ],
       "fieldConfig": {
         "defaults": {
-          "unit": "short",
+          "unit": "celsius",
+          "decimals": 1,
+          "noValue": "Sem dados",
+          "color": {
+            "mode": "thresholds"
+          },
+          "mappings": [],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "value": null,
+                "color": "red"
+              },
+              {
+                "value": 0,
+                "color": "green"
+              }
+            ]
+          }
+        },
+        "overrides": []
+      },
+      "options": {
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "/.*/",
+          "values": false
+        },
+        "colorMode": "value",
+        "graphMode": "none",
+        "textMode": "value",
+        "justifyMode": "center",
+        "orientation": "auto",
+        "wideLayout": false,
+        "text": {
+          "valueSize": 22,
+          "titleSize": 12
+        }
+      },
+      "pluginVersion": "12.2.0",
+      "transformations": [
+        {
+          "id": "filterFieldsByName",
+          "options": {
+            "include": {
+              "names": [
+                "margem"
+              ]
+            }
+          }
+        },
+        {
+          "id": "organize",
+          "options": {
+            "indexByName": {
+              "margem": 0
+            }
+          }
+        }
+      ]
+    },
+    {
+      "id": 15,
+      "title": "Variação de temperatura",
+      "type": "stat",
+      "gridPos": {
+        "x": 16,
+        "y": 3,
+        "w": 4,
+        "h": 4
+      },
+      "description": "Regras: REGRAS-DASHBOARDS.md",
+      "datasource": {
+        "type": "datasource",
+        "uid": "-- Dashboard --"
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "datasource",
+            "uid": "-- Dashboard --"
+          },
+          "panelId": 1,
+          "withTransforms": false
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "suffix:°C/min",
           "decimals": 1,
           "noValue": "Sem dados",
           "color": {
             "mode": "fixed",
-            "fixedColor": "#20234F"
+            "fixedColor": "#1264F5"
           },
           "mappings": []
         },
-        "overrides": [
-          {
-            "matcher": {
-              "id": "byName",
-              "options": "margem"
-            },
-            "properties": [
-              {
-                "id": "unit",
-                "value": "celsius"
-              },
-              {
-                "id": "color",
-                "value": {
-                  "mode": "thresholds"
-                }
-              },
-              {
-                "id": "thresholds",
-                "value": {
-                  "mode": "absolute",
-                  "steps": [
-                    {
-                      "value": null,
-                      "color": "red"
-                    },
-                    {
-                      "value": 0,
-                      "color": "green"
-                    }
-                  ]
-                }
-              }
-            ]
-          },
-          {
-            "matcher": {
-              "id": "byName",
-              "options": "taxa"
-            },
-            "properties": [
-              {
-                "id": "unit",
-                "value": "suffix:°C/min"
-              },
-              {
-                "id": "color",
-                "value": {
-                  "mode": "fixed",
-                  "fixedColor": "#1264F5"
-                }
-              }
-            ]
-          },
-          {
-            "matcher": {
-              "id": "byName",
-              "options": "tendencia"
-            },
-            "properties": [
-              {
-                "id": "unit",
-                "value": "none"
-              },
-              {
-                "id": "color",
-                "value": {
-                  "mode": "fixed",
-                  "fixedColor": "#1264F5"
-                }
-              }
-            ]
-          }
-        ]
+        "overrides": []
       },
       "options": {
-        "inlineEditing": false,
-        "panZoom": false,
-        "zoomToContent": true,
-        "showAdvancedTypes": false,
-        "tooltip": {
-          "mode": "single",
-          "disableForOneClick": true
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "/.*/",
+          "values": false
         },
-        "root": {
-          "name": "Eletrometry",
-          "type": "frame",
-          "placement": {
-            "left": 0,
-            "top": 0,
-            "width": 510,
-            "height": 190
-          },
-          "background": {
-            "color": {
-              "fixed": "#FFFFFF"
-            }
-          },
-          "elements": [
-            {
-              "name": "Margem até o crítico-12-22",
-              "type": "text",
-              "placement": {
-                "left": 12,
-                "top": 22,
-                "width": 235,
-                "height": 28
-              },
-              "constraint": {
-                "horizontal": "scale",
-                "vertical": "scale"
-              },
-              "background": {
-                "color": {
-                  "fixed": "transparent"
-                }
-              },
-              "border": {
-                "radius": 8,
-                "width": 0
-              },
-              "config": {
-                "text": {
-                  "mode": "fixed",
-                  "fixed": "Margem até o crítico"
-                },
-                "align": "left",
-                "valign": "middle",
-                "size": 16,
-                "color": {
-                  "fixed": "#20234F"
-                }
-              }
-            },
-            {
-              "name": "margem-12-63",
-              "type": "metric-value",
-              "placement": {
-                "left": 12,
-                "top": 63,
-                "width": 235,
-                "height": 55
-              },
-              "constraint": {
-                "horizontal": "scale",
-                "vertical": "scale"
-              },
-              "background": {
-                "color": {
-                  "fixed": "transparent"
-                }
-              },
-              "border": {
-                "radius": 8,
-                "width": 0
-              },
-              "config": {
-                "text": {
-                  "mode": "field",
-                  "field": "margem",
-                  "fixed": ""
-                },
-                "align": "left",
-                "valign": "middle",
-                "size": 35,
-                "color": {
-                  "field": "margem",
-                  "fixed": "#20234F"
-                }
-              }
-            },
-            {
-              "name": "Taxa de Variação-265-22",
-              "type": "text",
-              "placement": {
-                "left": 265,
-                "top": 22,
-                "width": 230,
-                "height": 28
-              },
-              "constraint": {
-                "horizontal": "scale",
-                "vertical": "scale"
-              },
-              "background": {
-                "color": {
-                  "fixed": "transparent"
-                }
-              },
-              "border": {
-                "radius": 8,
-                "width": 0
-              },
-              "config": {
-                "text": {
-                  "mode": "fixed",
-                  "fixed": "Taxa de Variação"
-                },
-                "align": "left",
-                "valign": "middle",
-                "size": 16,
-                "color": {
-                  "fixed": "#20234F"
-                }
-              }
-            },
-            {
-              "name": "taxa-265-63",
-              "type": "metric-value",
-              "placement": {
-                "left": 265,
-                "top": 63,
-                "width": 230,
-                "height": 55
-              },
-              "constraint": {
-                "horizontal": "scale",
-                "vertical": "scale"
-              },
-              "background": {
-                "color": {
-                  "fixed": "transparent"
-                }
-              },
-              "border": {
-                "radius": 8,
-                "width": 0
-              },
-              "config": {
-                "text": {
-                  "mode": "field",
-                  "field": "taxa",
-                  "fixed": ""
-                },
-                "align": "left",
-                "valign": "middle",
-                "size": 30,
-                "color": {
-                  "field": "taxa",
-                  "fixed": "#20234F"
-                }
-              }
-            },
-            {
-              "name": "Tendência-265-126",
-              "type": "text",
-              "placement": {
-                "left": 265,
-                "top": 126,
-                "width": 90,
-                "height": 26
-              },
-              "constraint": {
-                "horizontal": "scale",
-                "vertical": "scale"
-              },
-              "background": {
-                "color": {
-                  "fixed": "transparent"
-                }
-              },
-              "border": {
-                "radius": 8,
-                "width": 0
-              },
-              "config": {
-                "text": {
-                  "mode": "fixed",
-                  "fixed": "Tendência"
-                },
-                "align": "left",
-                "valign": "middle",
-                "size": 13,
-                "color": {
-                  "fixed": "#77859F"
-                }
-              }
-            },
-            {
-              "name": "tendencia-360-126",
-              "type": "metric-value",
-              "placement": {
-                "left": 360,
-                "top": 126,
-                "width": 135,
-                "height": 26
-              },
-              "constraint": {
-                "horizontal": "scale",
-                "vertical": "scale"
-              },
-              "background": {
-                "color": {
-                  "fixed": "transparent"
-                }
-              },
-              "border": {
-                "radius": 8,
-                "width": 0
-              },
-              "config": {
-                "text": {
-                  "mode": "field",
-                  "field": "tendencia",
-                  "fixed": ""
-                },
-                "align": "left",
-                "valign": "middle",
-                "size": 15,
-                "color": {
-                  "field": "tendencia",
-                  "fixed": "#20234F"
-                }
-              }
-            }
-          ]
+        "colorMode": "value",
+        "graphMode": "none",
+        "textMode": "value",
+        "justifyMode": "center",
+        "orientation": "auto",
+        "wideLayout": false,
+        "text": {
+          "valueSize": 22,
+          "titleSize": 12
         }
       },
-      "pluginVersion": "12.2.0"
+      "pluginVersion": "12.2.0",
+      "transformations": [
+        {
+          "id": "filterFieldsByName",
+          "options": {
+            "include": {
+              "names": [
+                "taxa"
+              ]
+            }
+          }
+        },
+        {
+          "id": "organize",
+          "options": {
+            "indexByName": {
+              "taxa": 0
+            }
+          }
+        }
+      ]
+    },
+    {
+      "id": 16,
+      "title": "Tendência térmica",
+      "type": "stat",
+      "gridPos": {
+        "x": 20,
+        "y": 3,
+        "w": 4,
+        "h": 4
+      },
+      "description": "",
+      "datasource": {
+        "type": "datasource",
+        "uid": "-- Dashboard --"
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "datasource",
+            "uid": "-- Dashboard --"
+          },
+          "panelId": 1,
+          "withTransforms": false
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "none",
+          "decimals": 1,
+          "noValue": "Sem dados",
+          "color": {
+            "mode": "fixed",
+            "fixedColor": "#1264F5"
+          },
+          "mappings": []
+        },
+        "overrides": []
+      },
+      "options": {
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "/.*/",
+          "values": false
+        },
+        "colorMode": "value",
+        "graphMode": "none",
+        "textMode": "value",
+        "justifyMode": "center",
+        "orientation": "auto",
+        "wideLayout": false,
+        "text": {
+          "valueSize": 22,
+          "titleSize": 12
+        }
+      },
+      "pluginVersion": "12.2.0",
+      "transformations": [
+        {
+          "id": "filterFieldsByName",
+          "options": {
+            "include": {
+              "names": [
+                "tendencia"
+              ]
+            }
+          }
+        },
+        {
+          "id": "organize",
+          "options": {
+            "indexByName": {
+              "tendencia": 0
+            }
+          }
+        }
+      ]
     },
     {
       "id": 6,
-      "title": "Corrente e Temperatura por Fase",
+      "title": "Corrente e temperatura por fase",
       "type": "timeseries",
       "gridPos": {
         "x": 0,
-        "y": 12,
-        "w": 11,
-        "h": 14
+        "y": 7,
+        "w": 16,
+        "h": 11
       },
-      "description": "Cheia=temperatura; tracejada=corrente; cor=fase. Selecione séries pela legenda. Fórmulas em REGRAS-DASHBOARDS.md.",
+      "description": "Regras: REGRAS-DASHBOARDS.md",
       "datasource": {
         "type": "mysql",
         "uid": "eletrometry-mysql"
@@ -1226,7 +966,7 @@
             "type": "mysql",
             "uid": "eletrometry-mysql"
           },
-          "rawSql": "SELECT $__timeGroupAlias(coletado_em,'$__interval',NULL),\n AVG(CASE WHEN tipo='corrente' AND qualidade_a='ok' THEN fase_a END) `Corr A`,\n AVG(CASE WHEN tipo='corrente' AND qualidade_b='ok' THEN fase_b END) `Corr B`,\n AVG(CASE WHEN tipo='corrente' AND qualidade_c='ok' THEN fase_c END) `Corr C`,\n AVG(CASE WHEN tipo='temperatura' AND qualidade_a='ok' THEN fase_a END) `Temp A`,\n AVG(CASE WHEN tipo='temperatura' AND qualidade_b='ok' THEN fase_b END) `Temp B`,\n AVG(CASE WHEN tipo='temperatura' AND qualidade_c='ok' THEN fase_c END) `Temp C`\n FROM leituras WHERE cabine_id = ${cabine:sqlstring} AND $__timeFilter(coletado_em) GROUP BY 1 ORDER BY 1",
+          "rawSql": "SELECT /*+ MAX_EXECUTION_TIME(15000) */ * FROM (SELECT $__timeGroupAlias(coletado_em,'$__interval',NULL),\n AVG(CASE WHEN tipo='corrente' AND qualidade_a='ok' THEN fase_a END) `Corr A`,\n AVG(CASE WHEN tipo='corrente' AND qualidade_b='ok' THEN fase_b END) `Corr B`,\n AVG(CASE WHEN tipo='corrente' AND qualidade_c='ok' THEN fase_c END) `Corr C`,\n AVG(CASE WHEN tipo='temperatura' AND qualidade_a='ok' THEN fase_a END) `Temp A`,\n AVG(CASE WHEN tipo='temperatura' AND qualidade_b='ok' THEN fase_b END) `Temp B`,\n AVG(CASE WHEN tipo='temperatura' AND qualidade_c='ok' THEN fase_c END) `Temp C`\n FROM leituras WHERE cabine_id = ${cabine:sqlstring} AND $__timeFilter(coletado_em) GROUP BY 1 ORDER BY 1) bounded_query ORDER BY `time`",
           "format": "time_series",
           "editorMode": "code",
           "rawQuery": true
@@ -1238,7 +978,8 @@
           "decimals": 1,
           "noValue": "Sem dados",
           "color": {
-            "mode": "palette-classic"
+            "mode": "fixed",
+            "fixedColor": "#FF9800"
           },
           "mappings": [],
           "custom": {
@@ -1246,7 +987,10 @@
             "lineWidth": 2,
             "fillOpacity": 0,
             "spanNulls": false,
-            "showPoints": "never"
+            "showPoints": "auto",
+            "pointSize": 4,
+            "axisBorderShow": false,
+            "axisCenteredZero": false
           }
         },
         "overrides": [
@@ -1477,7 +1221,7 @@
       "options": {
         "legend": {
           "displayMode": "list",
-          "placement": "top",
+          "placement": "bottom",
           "calcs": []
         },
         "tooltip": {
@@ -1487,1058 +1231,19 @@
       },
       "pluginVersion": "12.2.0",
       "maxDataPoints": 700,
-      "interval": "1s",
-      "links": [
-        {
-          "title": "Minuto",
-          "url": "/d/eletrometry-cabines?${cabine:queryparam}&from=now-1m&to=now&theme=light"
-        },
-        {
-          "title": "1 Hora",
-          "url": "/d/eletrometry-cabines?${cabine:queryparam}&from=now-1h&to=now&theme=light"
-        },
-        {
-          "title": "24h",
-          "url": "/d/eletrometry-cabines?${cabine:queryparam}&from=now-24h&to=now&theme=light"
-        }
-      ]
-    },
-    {
-      "id": 7,
-      "title": "Desequilíbrio entre fases",
-      "type": "canvas",
-      "gridPos": {
-        "x": 11,
-        "y": 12,
-        "w": 5,
-        "h": 14
-      },
-      "description": "100×máximo desvio absoluto em relação à média / média das três correntes. R=A; S=B; T=C. Ideal≤5%; atenção>5%; moderado≥10%; crítico≥20%. Sem três fases válidas, sem cálculo.",
-      "datasource": {
-        "type": "datasource",
-        "uid": "-- Dashboard --"
-      },
-      "targets": [
-        {
-          "refId": "A",
-          "datasource": {
-            "type": "datasource",
-            "uid": "-- Dashboard --"
-          },
-          "panelId": 1,
-          "withTransforms": false
-        }
-      ],
-      "fieldConfig": {
-        "defaults": {
-          "unit": "short",
-          "decimals": 1,
-          "noValue": "Sem dados",
-          "color": {
-            "mode": "fixed",
-            "fixedColor": "#20234F"
-          },
-          "mappings": []
-        },
-        "overrides": [
-          {
-            "matcher": {
-              "id": "byName",
-              "options": "desequilibrio"
-            },
-            "properties": [
-              {
-                "id": "unit",
-                "value": "percent"
-              },
-              {
-                "id": "color",
-                "value": {
-                  "mode": "thresholds"
-                }
-              },
-              {
-                "id": "thresholds",
-                "value": {
-                  "mode": "absolute",
-                  "steps": [
-                    {
-                      "value": null,
-                      "color": "green"
-                    },
-                    {
-                      "value": 5.000001,
-                      "color": "yellow"
-                    },
-                    {
-                      "value": 10,
-                      "color": "orange"
-                    },
-                    {
-                      "value": 20,
-                      "color": "red"
-                    }
-                  ]
-                }
-              }
-            ]
-          },
-          {
-            "matcher": {
-              "id": "byName",
-              "options": "delta_pct_a"
-            },
-            "properties": [
-              {
-                "id": "unit",
-                "value": "percent"
-              },
-              {
-                "id": "decimals",
-                "value": 1
-              }
-            ]
-          },
-          {
-            "matcher": {
-              "id": "byName",
-              "options": "corrente_a"
-            },
-            "properties": [
-              {
-                "id": "unit",
-                "value": "amp"
-              }
-            ]
-          },
-          {
-            "matcher": {
-              "id": "byName",
-              "options": "delta_a"
-            },
-            "properties": [
-              {
-                "id": "unit",
-                "value": "amp"
-              },
-              {
-                "id": "color",
-                "value": {
-                  "mode": "fixed",
-                  "fixedColor": "#77859F"
-                }
-              }
-            ]
-          },
-          {
-            "matcher": {
-              "id": "byName",
-              "options": "delta_pct_b"
-            },
-            "properties": [
-              {
-                "id": "unit",
-                "value": "percent"
-              },
-              {
-                "id": "decimals",
-                "value": 1
-              }
-            ]
-          },
-          {
-            "matcher": {
-              "id": "byName",
-              "options": "corrente_b"
-            },
-            "properties": [
-              {
-                "id": "unit",
-                "value": "amp"
-              }
-            ]
-          },
-          {
-            "matcher": {
-              "id": "byName",
-              "options": "delta_b"
-            },
-            "properties": [
-              {
-                "id": "unit",
-                "value": "amp"
-              },
-              {
-                "id": "color",
-                "value": {
-                  "mode": "fixed",
-                  "fixedColor": "#77859F"
-                }
-              }
-            ]
-          },
-          {
-            "matcher": {
-              "id": "byName",
-              "options": "delta_pct_c"
-            },
-            "properties": [
-              {
-                "id": "unit",
-                "value": "percent"
-              },
-              {
-                "id": "decimals",
-                "value": 1
-              }
-            ]
-          },
-          {
-            "matcher": {
-              "id": "byName",
-              "options": "corrente_c"
-            },
-            "properties": [
-              {
-                "id": "unit",
-                "value": "amp"
-              }
-            ]
-          },
-          {
-            "matcher": {
-              "id": "byName",
-              "options": "delta_c"
-            },
-            "properties": [
-              {
-                "id": "unit",
-                "value": "amp"
-              },
-              {
-                "id": "color",
-                "value": {
-                  "mode": "fixed",
-                  "fixedColor": "#77859F"
-                }
-              }
-            ]
-          },
-          {
-            "matcher": {
-              "id": "byName",
-              "options": "media_fases"
-            },
-            "properties": [
-              {
-                "id": "unit",
-                "value": "amp"
-              }
-            ]
-          }
-        ]
-      },
-      "options": {
-        "inlineEditing": false,
-        "panZoom": false,
-        "zoomToContent": true,
-        "showAdvancedTypes": false,
-        "tooltip": {
-          "mode": "single",
-          "disableForOneClick": true
-        },
-        "root": {
-          "name": "Eletrometry",
-          "type": "frame",
-          "placement": {
-            "left": 0,
-            "top": 0,
-            "width": 310,
-            "height": 525
-          },
-          "background": {
-            "color": {
-              "fixed": "#FFFFFF"
-            }
-          },
-          "elements": [
-            {
-              "name": "desequilibrio-12-8",
-              "type": "metric-value",
-              "placement": {
-                "left": 12,
-                "top": 8,
-                "width": 282,
-                "height": 65
-              },
-              "constraint": {
-                "horizontal": "scale",
-                "vertical": "scale"
-              },
-              "background": {
-                "color": {
-                  "fixed": "transparent"
-                }
-              },
-              "border": {
-                "radius": 8,
-                "width": 0
-              },
-              "config": {
-                "text": {
-                  "mode": "field",
-                  "field": "desequilibrio",
-                  "fixed": ""
-                },
-                "align": "left",
-                "valign": "middle",
-                "size": 42,
-                "color": {
-                  "field": "desequilibrio",
-                  "fixed": "#20234F"
-                }
-              }
-            },
-            {
-              "name": "Desvio máximo em relação-12-78",
-              "type": "text",
-              "placement": {
-                "left": 12,
-                "top": 78,
-                "width": 282,
-                "height": 24
-              },
-              "constraint": {
-                "horizontal": "scale",
-                "vertical": "scale"
-              },
-              "background": {
-                "color": {
-                  "fixed": "transparent"
-                }
-              },
-              "border": {
-                "radius": 8,
-                "width": 0
-              },
-              "config": {
-                "text": {
-                  "mode": "fixed",
-                  "fixed": "Desvio máximo em relação"
-                },
-                "align": "left",
-                "valign": "middle",
-                "size": 14,
-                "color": {
-                  "fixed": "#77859F"
-                }
-              }
-            },
-            {
-              "name": "à média das fases-12-99",
-              "type": "text",
-              "placement": {
-                "left": 12,
-                "top": 99,
-                "width": 282,
-                "height": 24
-              },
-              "constraint": {
-                "horizontal": "scale",
-                "vertical": "scale"
-              },
-              "background": {
-                "color": {
-                  "fixed": "transparent"
-                }
-              },
-              "border": {
-                "radius": 8,
-                "width": 0
-              },
-              "config": {
-                "text": {
-                  "mode": "fixed",
-                  "fixed": "à média das fases"
-                },
-                "align": "left",
-                "valign": "middle",
-                "size": 14,
-                "color": {
-                  "fixed": "#77859F"
-                }
-              }
-            },
-            {
-              "name": "desequilibrio_status-12-121",
-              "type": "metric-value",
-              "placement": {
-                "left": 12,
-                "top": 121,
-                "width": 282,
-                "height": 23
-              },
-              "constraint": {
-                "horizontal": "scale",
-                "vertical": "scale"
-              },
-              "background": {
-                "color": {
-                  "fixed": "transparent"
-                }
-              },
-              "border": {
-                "radius": 8,
-                "width": 0
-              },
-              "config": {
-                "text": {
-                  "mode": "field",
-                  "field": "desequilibrio_status",
-                  "fixed": ""
-                },
-                "align": "left",
-                "valign": "middle",
-                "size": 13,
-                "color": {
-                  "field": "desequilibrio_status",
-                  "fixed": "#20234F"
-                }
-              }
-            },
-            {
-              "name": "Fase R-12-146",
-              "type": "text",
-              "placement": {
-                "left": 12,
-                "top": 146,
-                "width": 75,
-                "height": 32
-              },
-              "constraint": {
-                "horizontal": "scale",
-                "vertical": "scale"
-              },
-              "background": {
-                "color": {
-                  "fixed": "transparent"
-                }
-              },
-              "border": {
-                "radius": 8,
-                "width": 0
-              },
-              "config": {
-                "text": {
-                  "mode": "fixed",
-                  "fixed": "Fase R"
-                },
-                "align": "left",
-                "valign": "middle",
-                "size": 16,
-                "color": {
-                  "fixed": "#20234F"
-                }
-              }
-            },
-            {
-              "name": "corrente_a-90-146",
-              "type": "metric-value",
-              "placement": {
-                "left": 90,
-                "top": 146,
-                "width": 110,
-                "height": 32
-              },
-              "constraint": {
-                "horizontal": "scale",
-                "vertical": "scale"
-              },
-              "background": {
-                "color": {
-                  "fixed": "transparent"
-                }
-              },
-              "border": {
-                "radius": 8,
-                "width": 0
-              },
-              "config": {
-                "text": {
-                  "mode": "field",
-                  "field": "corrente_a",
-                  "fixed": ""
-                },
-                "align": "left",
-                "valign": "middle",
-                "size": 21,
-                "color": {
-                  "field": "corrente_a",
-                  "fixed": "#20234F"
-                }
-              }
-            },
-            {
-              "name": "delta_a-206-146",
-              "type": "metric-value",
-              "placement": {
-                "left": 206,
-                "top": 146,
-                "width": 90,
-                "height": 32
-              },
-              "constraint": {
-                "horizontal": "scale",
-                "vertical": "scale"
-              },
-              "background": {
-                "color": {
-                  "fixed": "transparent"
-                }
-              },
-              "border": {
-                "radius": 8,
-                "width": 0
-              },
-              "config": {
-                "text": {
-                  "mode": "field",
-                  "field": "delta_a",
-                  "fixed": ""
-                },
-                "align": "left",
-                "valign": "middle",
-                "size": 15,
-                "color": {
-                  "field": "delta_a",
-                  "fixed": "#20234F"
-                }
-              }
-            },
-            {
-              "name": "delta_pct_a-206-175",
-              "type": "metric-value",
-              "placement": {
-                "left": 206,
-                "top": 175,
-                "width": 90,
-                "height": 22
-              },
-              "constraint": {
-                "horizontal": "scale",
-                "vertical": "scale"
-              },
-              "background": {
-                "color": {
-                  "fixed": "transparent"
-                }
-              },
-              "border": {
-                "radius": 8,
-                "width": 0
-              },
-              "config": {
-                "text": {
-                  "mode": "field",
-                  "field": "delta_pct_a",
-                  "fixed": ""
-                },
-                "align": "left",
-                "valign": "middle",
-                "size": 12,
-                "color": {
-                  "field": "delta_pct_a",
-                  "fixed": "#20234F"
-                }
-              }
-            },
-            {
-              "name": "Fase S-12-216",
-              "type": "text",
-              "placement": {
-                "left": 12,
-                "top": 216,
-                "width": 75,
-                "height": 32
-              },
-              "constraint": {
-                "horizontal": "scale",
-                "vertical": "scale"
-              },
-              "background": {
-                "color": {
-                  "fixed": "transparent"
-                }
-              },
-              "border": {
-                "radius": 8,
-                "width": 0
-              },
-              "config": {
-                "text": {
-                  "mode": "fixed",
-                  "fixed": "Fase S"
-                },
-                "align": "left",
-                "valign": "middle",
-                "size": 16,
-                "color": {
-                  "fixed": "#20234F"
-                }
-              }
-            },
-            {
-              "name": "corrente_b-90-216",
-              "type": "metric-value",
-              "placement": {
-                "left": 90,
-                "top": 216,
-                "width": 110,
-                "height": 32
-              },
-              "constraint": {
-                "horizontal": "scale",
-                "vertical": "scale"
-              },
-              "background": {
-                "color": {
-                  "fixed": "transparent"
-                }
-              },
-              "border": {
-                "radius": 8,
-                "width": 0
-              },
-              "config": {
-                "text": {
-                  "mode": "field",
-                  "field": "corrente_b",
-                  "fixed": ""
-                },
-                "align": "left",
-                "valign": "middle",
-                "size": 21,
-                "color": {
-                  "field": "corrente_b",
-                  "fixed": "#20234F"
-                }
-              }
-            },
-            {
-              "name": "delta_b-206-216",
-              "type": "metric-value",
-              "placement": {
-                "left": 206,
-                "top": 216,
-                "width": 90,
-                "height": 32
-              },
-              "constraint": {
-                "horizontal": "scale",
-                "vertical": "scale"
-              },
-              "background": {
-                "color": {
-                  "fixed": "transparent"
-                }
-              },
-              "border": {
-                "radius": 8,
-                "width": 0
-              },
-              "config": {
-                "text": {
-                  "mode": "field",
-                  "field": "delta_b",
-                  "fixed": ""
-                },
-                "align": "left",
-                "valign": "middle",
-                "size": 15,
-                "color": {
-                  "field": "delta_b",
-                  "fixed": "#20234F"
-                }
-              }
-            },
-            {
-              "name": "delta_pct_b-206-245",
-              "type": "metric-value",
-              "placement": {
-                "left": 206,
-                "top": 245,
-                "width": 90,
-                "height": 22
-              },
-              "constraint": {
-                "horizontal": "scale",
-                "vertical": "scale"
-              },
-              "background": {
-                "color": {
-                  "fixed": "transparent"
-                }
-              },
-              "border": {
-                "radius": 8,
-                "width": 0
-              },
-              "config": {
-                "text": {
-                  "mode": "field",
-                  "field": "delta_pct_b",
-                  "fixed": ""
-                },
-                "align": "left",
-                "valign": "middle",
-                "size": 12,
-                "color": {
-                  "field": "delta_pct_b",
-                  "fixed": "#20234F"
-                }
-              }
-            },
-            {
-              "name": "Fase T-12-286",
-              "type": "text",
-              "placement": {
-                "left": 12,
-                "top": 286,
-                "width": 75,
-                "height": 32
-              },
-              "constraint": {
-                "horizontal": "scale",
-                "vertical": "scale"
-              },
-              "background": {
-                "color": {
-                  "fixed": "transparent"
-                }
-              },
-              "border": {
-                "radius": 8,
-                "width": 0
-              },
-              "config": {
-                "text": {
-                  "mode": "fixed",
-                  "fixed": "Fase T"
-                },
-                "align": "left",
-                "valign": "middle",
-                "size": 16,
-                "color": {
-                  "fixed": "#20234F"
-                }
-              }
-            },
-            {
-              "name": "corrente_c-90-286",
-              "type": "metric-value",
-              "placement": {
-                "left": 90,
-                "top": 286,
-                "width": 110,
-                "height": 32
-              },
-              "constraint": {
-                "horizontal": "scale",
-                "vertical": "scale"
-              },
-              "background": {
-                "color": {
-                  "fixed": "transparent"
-                }
-              },
-              "border": {
-                "radius": 8,
-                "width": 0
-              },
-              "config": {
-                "text": {
-                  "mode": "field",
-                  "field": "corrente_c",
-                  "fixed": ""
-                },
-                "align": "left",
-                "valign": "middle",
-                "size": 21,
-                "color": {
-                  "field": "corrente_c",
-                  "fixed": "#20234F"
-                }
-              }
-            },
-            {
-              "name": "delta_c-206-286",
-              "type": "metric-value",
-              "placement": {
-                "left": 206,
-                "top": 286,
-                "width": 90,
-                "height": 32
-              },
-              "constraint": {
-                "horizontal": "scale",
-                "vertical": "scale"
-              },
-              "background": {
-                "color": {
-                  "fixed": "transparent"
-                }
-              },
-              "border": {
-                "radius": 8,
-                "width": 0
-              },
-              "config": {
-                "text": {
-                  "mode": "field",
-                  "field": "delta_c",
-                  "fixed": ""
-                },
-                "align": "left",
-                "valign": "middle",
-                "size": 15,
-                "color": {
-                  "field": "delta_c",
-                  "fixed": "#20234F"
-                }
-              }
-            },
-            {
-              "name": "delta_pct_c-206-315",
-              "type": "metric-value",
-              "placement": {
-                "left": 206,
-                "top": 315,
-                "width": 90,
-                "height": 22
-              },
-              "constraint": {
-                "horizontal": "scale",
-                "vertical": "scale"
-              },
-              "background": {
-                "color": {
-                  "fixed": "transparent"
-                }
-              },
-              "border": {
-                "radius": 8,
-                "width": 0
-              },
-              "config": {
-                "text": {
-                  "mode": "field",
-                  "field": "delta_pct_c",
-                  "fixed": ""
-                },
-                "align": "left",
-                "valign": "middle",
-                "size": 12,
-                "color": {
-                  "field": "delta_pct_c",
-                  "fixed": "#20234F"
-                }
-              }
-            },
-            {
-              "name": "Média das fases-12-367",
-              "type": "text",
-              "placement": {
-                "left": 12,
-                "top": 367,
-                "width": 280,
-                "height": 25
-              },
-              "constraint": {
-                "horizontal": "scale",
-                "vertical": "scale"
-              },
-              "background": {
-                "color": {
-                  "fixed": "transparent"
-                }
-              },
-              "border": {
-                "radius": 8,
-                "width": 0
-              },
-              "config": {
-                "text": {
-                  "mode": "fixed",
-                  "fixed": "Média das fases"
-                },
-                "align": "left",
-                "valign": "middle",
-                "size": 16,
-                "color": {
-                  "fixed": "#20234F"
-                }
-              }
-            },
-            {
-              "name": "media_fases-12-397",
-              "type": "metric-value",
-              "placement": {
-                "left": 12,
-                "top": 397,
-                "width": 280,
-                "height": 40
-              },
-              "constraint": {
-                "horizontal": "scale",
-                "vertical": "scale"
-              },
-              "background": {
-                "color": {
-                  "fixed": "transparent"
-                }
-              },
-              "border": {
-                "radius": 8,
-                "width": 0
-              },
-              "config": {
-                "text": {
-                  "mode": "field",
-                  "field": "media_fases",
-                  "fixed": ""
-                },
-                "align": "left",
-                "valign": "middle",
-                "size": 26,
-                "color": {
-                  "field": "media_fases",
-                  "fixed": "#20234F"
-                }
-              }
-            },
-            {
-              "name": "Faixa ideal ≤ 5%-12-443",
-              "type": "text",
-              "placement": {
-                "left": 12,
-                "top": 443,
-                "width": 280,
-                "height": 32
-              },
-              "constraint": {
-                "horizontal": "scale",
-                "vertical": "scale"
-              },
-              "background": {
-                "color": {
-                  "fixed": "transparent"
-                }
-              },
-              "border": {
-                "radius": 8,
-                "width": 0
-              },
-              "config": {
-                "text": {
-                  "mode": "fixed",
-                  "fixed": "Faixa ideal ≤ 5%"
-                },
-                "align": "left",
-                "valign": "middle",
-                "size": 18,
-                "color": {
-                  "fixed": "#20234F"
-                }
-              }
-            },
-            {
-              "name": "Maior fase-12-485",
-              "type": "text",
-              "placement": {
-                "left": 12,
-                "top": 485,
-                "width": 130,
-                "height": 25
-              },
-              "constraint": {
-                "horizontal": "scale",
-                "vertical": "scale"
-              },
-              "background": {
-                "color": {
-                  "fixed": "transparent"
-                }
-              },
-              "border": {
-                "radius": 8,
-                "width": 0
-              },
-              "config": {
-                "text": {
-                  "mode": "fixed",
-                  "fixed": "Maior fase"
-                },
-                "align": "left",
-                "valign": "middle",
-                "size": 14,
-                "color": {
-                  "fixed": "#20234F"
-                }
-              }
-            },
-            {
-              "name": "maior_fase-156-485",
-              "type": "metric-value",
-              "placement": {
-                "left": 156,
-                "top": 485,
-                "width": 140,
-                "height": 25
-              },
-              "constraint": {
-                "horizontal": "scale",
-                "vertical": "scale"
-              },
-              "background": {
-                "color": {
-                  "fixed": "transparent"
-                }
-              },
-              "border": {
-                "radius": 8,
-                "width": 0
-              },
-              "config": {
-                "text": {
-                  "mode": "field",
-                  "field": "maior_fase",
-                  "fixed": ""
-                },
-                "align": "left",
-                "valign": "middle",
-                "size": 17,
-                "color": {
-                  "field": "maior_fase",
-                  "fixed": "#20234F"
-                }
-              }
-            }
-          ]
-        }
-      },
-      "pluginVersion": "12.2.0"
+      "interval": "1s"
     },
     {
       "id": 8,
-      "title": "Carregamento da cabine",
+      "title": "Carregamento · média das três fases",
       "type": "timeseries",
       "gridPos": {
         "x": 16,
-        "y": 6,
+        "y": 7,
         "w": 8,
-        "h": 9
+        "h": 8
       },
-      "description": "Média das três correntes válidas ao longo do período. Padrão calculado=média das amostras do período. Não estima energia ou demanda contratada.",
+      "description": "Regras: REGRAS-DASHBOARDS.md",
       "datasource": {
         "type": "mysql",
         "uid": "eletrometry-mysql"
@@ -2550,7 +1255,7 @@
             "type": "mysql",
             "uid": "eletrometry-mysql"
           },
-          "rawSql": "WITH readings AS (\n SELECT coletado_em,(fase_a+fase_b+fase_c)/3 valor FROM leituras\n WHERE cabine_id = ${cabine:sqlstring} AND tipo='corrente' AND $__timeFilter(coletado_em)\n AND qualidade_a='ok' AND qualidade_b='ok' AND qualidade_c='ok'\n), baseline AS (SELECT AVG(valor) valor FROM readings)\nSELECT $__timeGroupAlias(coletado_em,'$__interval',NULL),AVG(r.valor) Carregamento,MAX(b.valor) `Padrão calculado`\nFROM readings r CROSS JOIN baseline b GROUP BY 1 ORDER BY 1",
+          "rawSql": "SELECT /*+ MAX_EXECUTION_TIME(15000) */ * FROM (WITH readings AS (\n SELECT coletado_em,(fase_a+fase_b+fase_c)/3 valor FROM leituras\n WHERE cabine_id = ${cabine:sqlstring} AND tipo='corrente' AND $__timeFilter(coletado_em)\n AND qualidade_a='ok' AND qualidade_b='ok' AND qualidade_c='ok'\n), baseline AS (SELECT AVG(valor) valor FROM readings)\nSELECT $__timeGroupAlias(coletado_em,'$__interval',NULL),AVG(r.valor) Carregamento,MAX(b.valor) `Padrão calculado`\nFROM readings r CROSS JOIN baseline b GROUP BY 1 ORDER BY 1) bounded_query ORDER BY `time`",
           "format": "time_series",
           "editorMode": "code",
           "rawQuery": true
@@ -2563,15 +1268,18 @@
           "noValue": "Sem dados",
           "color": {
             "mode": "fixed",
-            "fixedColor": "orange"
+            "fixedColor": "#FF9800"
           },
           "mappings": [],
           "custom": {
             "drawStyle": "line",
             "lineWidth": 2,
-            "fillOpacity": 10,
+            "fillOpacity": 12,
             "spanNulls": false,
-            "showPoints": "never"
+            "showPoints": "auto",
+            "pointSize": 4,
+            "axisBorderShow": false,
+            "axisCenteredZero": false
           }
         },
         "overrides": [
@@ -2618,40 +1326,20 @@
         }
       },
       "pluginVersion": "12.2.0",
-      "interval": "1s",
       "maxDataPoints": 400,
-      "links": [
-        {
-          "title": "24 Horas",
-          "type": "link",
-          "url": "/d/eletrometry-cabines?from=now-24h&to=now&${cabine:queryparam}&theme=light",
-          "targetBlank": false
-        },
-        {
-          "title": "1 Semana",
-          "type": "link",
-          "url": "/d/eletrometry-cabines?from=now-7d&to=now&${cabine:queryparam}&theme=light",
-          "targetBlank": false
-        },
-        {
-          "title": "1 Mês",
-          "type": "link",
-          "url": "/d/eletrometry-cabines?from=now-30d&to=now&${cabine:queryparam}&theme=light",
-          "targetBlank": false
-        }
-      ]
+      "interval": "1s"
     },
     {
       "id": 9,
-      "title": "",
-      "type": "canvas",
+      "title": "Referências de carregamento",
+      "type": "stat",
       "gridPos": {
         "x": 16,
         "y": 15,
         "w": 8,
-        "h": 3
+        "h": 5
       },
-      "description": "Pico do dia=máxima média trifásica nas últimas 24h dentro do período. Duração no pico=soma dos intervalos com carga ≥95% desse pico; não só o instante máximo.",
+      "description": "Regras: REGRAS-DASHBOARDS.md",
       "datasource": {
         "type": "datasource",
         "uid": "-- Dashboard --"
@@ -2674,11 +1362,59 @@
           "noValue": "Sem dados",
           "color": {
             "mode": "fixed",
-            "fixedColor": "#20234F"
+            "fixedColor": "text"
           },
           "mappings": []
         },
         "overrides": [
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "pico"
+            },
+            "properties": [
+              {
+                "id": "displayName",
+                "value": "Pico · 24h"
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "pico_hora"
+            },
+            "properties": [
+              {
+                "id": "displayName",
+                "value": "Horário do pico"
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "duracao_pico"
+            },
+            "properties": [
+              {
+                "id": "displayName",
+                "value": "Tempo no pico"
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "padrao"
+            },
+            "properties": [
+              {
+                "id": "displayName",
+                "value": "Média do período"
+              }
+            ]
+          },
           {
             "matcher": {
               "id": "byName",
@@ -2734,298 +1470,63 @@
         ]
       },
       "options": {
-        "inlineEditing": false,
-        "panZoom": false,
-        "zoomToContent": true,
-        "showAdvancedTypes": false,
-        "tooltip": {
-          "mode": "single",
-          "disableForOneClick": true
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "/.*/",
+          "values": false
         },
-        "root": {
-          "name": "Eletrometry",
-          "type": "frame",
-          "placement": {
-            "left": 0,
-            "top": 0,
-            "width": 515,
-            "height": 85
-          },
-          "background": {
-            "color": {
-              "fixed": "#FFFFFF"
-            }
-          },
-          "elements": [
-            {
-              "name": "Pico do dia-8-0",
-              "type": "text",
-              "placement": {
-                "left": 8,
-                "top": 0,
-                "width": 160,
-                "height": 22
-              },
-              "constraint": {
-                "horizontal": "scale",
-                "vertical": "scale"
-              },
-              "background": {
-                "color": {
-                  "fixed": "transparent"
-                }
-              },
-              "border": {
-                "radius": 8,
-                "width": 0
-              },
-              "config": {
-                "text": {
-                  "mode": "fixed",
-                  "fixed": "Pico do dia"
-                },
-                "align": "left",
-                "valign": "middle",
-                "size": 13,
-                "color": {
-                  "fixed": "#77859F"
-                }
-              }
-            },
-            {
-              "name": "pico-8-28",
-              "type": "metric-value",
-              "placement": {
-                "left": 8,
-                "top": 28,
-                "width": 160,
-                "height": 30
-              },
-              "constraint": {
-                "horizontal": "scale",
-                "vertical": "scale"
-              },
-              "background": {
-                "color": {
-                  "fixed": "transparent"
-                }
-              },
-              "border": {
-                "radius": 8,
-                "width": 0
-              },
-              "config": {
-                "text": {
-                  "mode": "field",
-                  "field": "pico",
-                  "fixed": ""
-                },
-                "align": "left",
-                "valign": "middle",
-                "size": 22,
-                "color": {
-                  "field": "pico",
-                  "fixed": "#20234F"
-                }
-              }
-            },
-            {
-              "name": "pico_hora-8-60",
-              "type": "metric-value",
-              "placement": {
-                "left": 8,
-                "top": 60,
-                "width": 160,
-                "height": 20
-              },
-              "constraint": {
-                "horizontal": "scale",
-                "vertical": "scale"
-              },
-              "background": {
-                "color": {
-                  "fixed": "transparent"
-                }
-              },
-              "border": {
-                "radius": 8,
-                "width": 0
-              },
-              "config": {
-                "text": {
-                  "mode": "field",
-                  "field": "pico_hora",
-                  "fixed": ""
-                },
-                "align": "left",
-                "valign": "middle",
-                "size": 13,
-                "color": {
-                  "field": "pico_hora",
-                  "fixed": "#20234F"
-                }
-              }
-            },
-            {
-              "name": "Duração no pico-178-0",
-              "type": "text",
-              "placement": {
-                "left": 178,
-                "top": 0,
-                "width": 170,
-                "height": 22
-              },
-              "constraint": {
-                "horizontal": "scale",
-                "vertical": "scale"
-              },
-              "background": {
-                "color": {
-                  "fixed": "transparent"
-                }
-              },
-              "border": {
-                "radius": 8,
-                "width": 0
-              },
-              "config": {
-                "text": {
-                  "mode": "fixed",
-                  "fixed": "Duração no pico"
-                },
-                "align": "left",
-                "valign": "middle",
-                "size": 13,
-                "color": {
-                  "fixed": "#77859F"
-                }
-              }
-            },
-            {
-              "name": "duracao_pico-178-29",
-              "type": "metric-value",
-              "placement": {
-                "left": 178,
-                "top": 29,
-                "width": 170,
-                "height": 32
-              },
-              "constraint": {
-                "horizontal": "scale",
-                "vertical": "scale"
-              },
-              "background": {
-                "color": {
-                  "fixed": "transparent"
-                }
-              },
-              "border": {
-                "radius": 8,
-                "width": 0
-              },
-              "config": {
-                "text": {
-                  "mode": "field",
-                  "field": "duracao_pico",
-                  "fixed": ""
-                },
-                "align": "left",
-                "valign": "middle",
-                "size": 22,
-                "color": {
-                  "field": "duracao_pico",
-                  "fixed": "#20234F"
-                }
-              }
-            },
-            {
-              "name": "Padrão calculado-354-0",
-              "type": "text",
-              "placement": {
-                "left": 354,
-                "top": 0,
-                "width": 150,
-                "height": 22
-              },
-              "constraint": {
-                "horizontal": "scale",
-                "vertical": "scale"
-              },
-              "background": {
-                "color": {
-                  "fixed": "transparent"
-                }
-              },
-              "border": {
-                "radius": 8,
-                "width": 0
-              },
-              "config": {
-                "text": {
-                  "mode": "fixed",
-                  "fixed": "Padrão calculado"
-                },
-                "align": "left",
-                "valign": "middle",
-                "size": 13,
-                "color": {
-                  "fixed": "#77859F"
-                }
-              }
-            },
-            {
-              "name": "padrao-354-29",
-              "type": "metric-value",
-              "placement": {
-                "left": 354,
-                "top": 29,
-                "width": 150,
-                "height": 32
-              },
-              "constraint": {
-                "horizontal": "scale",
-                "vertical": "scale"
-              },
-              "background": {
-                "color": {
-                  "fixed": "transparent"
-                }
-              },
-              "border": {
-                "radius": 8,
-                "width": 0
-              },
-              "config": {
-                "text": {
-                  "mode": "field",
-                  "field": "padrao",
-                  "fixed": ""
-                },
-                "align": "left",
-                "valign": "middle",
-                "size": 22,
-                "color": {
-                  "field": "padrao",
-                  "fixed": "#20234F"
-                }
-              }
-            }
-          ]
+        "colorMode": "value",
+        "graphMode": "none",
+        "textMode": "value_and_name",
+        "justifyMode": "center",
+        "orientation": "auto",
+        "wideLayout": false,
+        "text": {
+          "valueSize": 22,
+          "titleSize": 12
         }
       },
-      "pluginVersion": "12.2.0"
+      "pluginVersion": "12.2.0",
+      "transformations": [
+        {
+          "id": "filterFieldsByName",
+          "options": {
+            "include": {
+              "names": [
+                "pico",
+                "pico_hora",
+                "duracao_pico",
+                "padrao"
+              ]
+            }
+          }
+        },
+        {
+          "id": "organize",
+          "options": {
+            "indexByName": {
+              "pico": 0,
+              "pico_hora": 1,
+              "duracao_pico": 2,
+              "padrao": 3
+            }
+          }
+        }
+      ]
     },
     {
-      "id": 10,
-      "title": "Saúde da Telemetria · ${sensor:text} / ${fase:text}",
-      "type": "canvas",
+      "id": 7,
+      "title": "Desequilíbrio · correntes",
+      "type": "stat",
       "gridPos": {
-        "x": 16,
-        "y": 18,
-        "w": 8,
-        "h": 4
+        "x": 0,
+        "y": 20,
+        "w": 6,
+        "h": 5
       },
-      "description": "Seletores acima. Atrasado≥15s; sem atualização≥60s; constante≥5min é indício. Idade de coleta relativa ao fim do período.",
+      "description": "Regras: REGRAS-DASHBOARDS.md",
       "datasource": {
         "type": "datasource",
         "uid": "-- Dashboard --"
@@ -3048,11 +1549,667 @@
           "noValue": "Sem dados",
           "color": {
             "mode": "fixed",
-            "fixedColor": "#20234F"
+            "fixedColor": "text"
           },
           "mappings": []
         },
         "overrides": [
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "desequilibrio"
+            },
+            "properties": [
+              {
+                "id": "displayName",
+                "value": "Desvio máximo"
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "media_fases"
+            },
+            "properties": [
+              {
+                "id": "displayName",
+                "value": "Média das fases"
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "desequilibrio"
+            },
+            "properties": [
+              {
+                "id": "unit",
+                "value": "percent"
+              },
+              {
+                "id": "color",
+                "value": {
+                  "mode": "thresholds"
+                }
+              },
+              {
+                "id": "thresholds",
+                "value": {
+                  "mode": "absolute",
+                  "steps": [
+                    {
+                      "value": null,
+                      "color": "green"
+                    },
+                    {
+                      "value": 5.000001,
+                      "color": "yellow"
+                    },
+                    {
+                      "value": 10,
+                      "color": "orange"
+                    },
+                    {
+                      "value": 20,
+                      "color": "red"
+                    }
+                  ]
+                }
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "media_fases"
+            },
+            "properties": [
+              {
+                "id": "unit",
+                "value": "amp"
+              }
+            ]
+          }
+        ]
+      },
+      "options": {
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "/.*/",
+          "values": false
+        },
+        "colorMode": "value",
+        "graphMode": "none",
+        "textMode": "value_and_name",
+        "justifyMode": "center",
+        "orientation": "auto",
+        "wideLayout": false,
+        "text": {
+          "valueSize": 22,
+          "titleSize": 12
+        }
+      },
+      "pluginVersion": "12.2.0",
+      "transformations": [
+        {
+          "id": "filterFieldsByName",
+          "options": {
+            "include": {
+              "names": [
+                "desequilibrio",
+                "media_fases"
+              ]
+            }
+          }
+        },
+        {
+          "id": "organize",
+          "options": {
+            "indexByName": {
+              "desequilibrio": 0,
+              "media_fases": 1
+            }
+          }
+        }
+      ]
+    },
+    {
+      "id": 30,
+      "title": "Fase R · corrente",
+      "type": "stat",
+      "gridPos": {
+        "x": 6,
+        "y": 20,
+        "w": 6,
+        "h": 5
+      },
+      "description": "",
+      "datasource": {
+        "type": "datasource",
+        "uid": "-- Dashboard --"
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "datasource",
+            "uid": "-- Dashboard --"
+          },
+          "panelId": 1,
+          "withTransforms": false
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "decimals": 1,
+          "noValue": "Sem dados",
+          "color": {
+            "mode": "fixed",
+            "fixedColor": "text"
+          },
+          "mappings": []
+        },
+        "overrides": [
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "corrente_a"
+            },
+            "properties": [
+              {
+                "id": "displayName",
+                "value": "Última leitura"
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "delta_a"
+            },
+            "properties": [
+              {
+                "id": "displayName",
+                "value": "Desvio (A)"
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "delta_pct_a"
+            },
+            "properties": [
+              {
+                "id": "displayName",
+                "value": "Desvio (%)"
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "corrente_a"
+            },
+            "properties": [
+              {
+                "id": "unit",
+                "value": "amp"
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "delta_pct_a"
+            },
+            "properties": [
+              {
+                "id": "unit",
+                "value": "percent"
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "delta_a"
+            },
+            "properties": [
+              {
+                "id": "unit",
+                "value": "amp"
+              }
+            ]
+          }
+        ]
+      },
+      "options": {
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "/.*/",
+          "values": false
+        },
+        "colorMode": "value",
+        "graphMode": "none",
+        "textMode": "value_and_name",
+        "justifyMode": "center",
+        "orientation": "auto",
+        "wideLayout": false,
+        "text": {
+          "valueSize": 22,
+          "titleSize": 12
+        }
+      },
+      "pluginVersion": "12.2.0",
+      "transformations": [
+        {
+          "id": "filterFieldsByName",
+          "options": {
+            "include": {
+              "names": [
+                "corrente_a",
+                "delta_a",
+                "delta_pct_a"
+              ]
+            }
+          }
+        },
+        {
+          "id": "organize",
+          "options": {
+            "indexByName": {
+              "corrente_a": 0,
+              "delta_a": 1,
+              "delta_pct_a": 2
+            }
+          }
+        }
+      ]
+    },
+    {
+      "id": 31,
+      "title": "Fase S · corrente",
+      "type": "stat",
+      "gridPos": {
+        "x": 12,
+        "y": 20,
+        "w": 6,
+        "h": 5
+      },
+      "description": "",
+      "datasource": {
+        "type": "datasource",
+        "uid": "-- Dashboard --"
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "datasource",
+            "uid": "-- Dashboard --"
+          },
+          "panelId": 1,
+          "withTransforms": false
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "decimals": 1,
+          "noValue": "Sem dados",
+          "color": {
+            "mode": "fixed",
+            "fixedColor": "text"
+          },
+          "mappings": []
+        },
+        "overrides": [
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "corrente_b"
+            },
+            "properties": [
+              {
+                "id": "displayName",
+                "value": "Última leitura"
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "delta_b"
+            },
+            "properties": [
+              {
+                "id": "displayName",
+                "value": "Desvio (A)"
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "delta_pct_b"
+            },
+            "properties": [
+              {
+                "id": "displayName",
+                "value": "Desvio (%)"
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "corrente_b"
+            },
+            "properties": [
+              {
+                "id": "unit",
+                "value": "amp"
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "delta_pct_b"
+            },
+            "properties": [
+              {
+                "id": "unit",
+                "value": "percent"
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "delta_b"
+            },
+            "properties": [
+              {
+                "id": "unit",
+                "value": "amp"
+              }
+            ]
+          }
+        ]
+      },
+      "options": {
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "/.*/",
+          "values": false
+        },
+        "colorMode": "value",
+        "graphMode": "none",
+        "textMode": "value_and_name",
+        "justifyMode": "center",
+        "orientation": "auto",
+        "wideLayout": false,
+        "text": {
+          "valueSize": 22,
+          "titleSize": 12
+        }
+      },
+      "pluginVersion": "12.2.0",
+      "transformations": [
+        {
+          "id": "filterFieldsByName",
+          "options": {
+            "include": {
+              "names": [
+                "corrente_b",
+                "delta_b",
+                "delta_pct_b"
+              ]
+            }
+          }
+        },
+        {
+          "id": "organize",
+          "options": {
+            "indexByName": {
+              "corrente_b": 0,
+              "delta_b": 1,
+              "delta_pct_b": 2
+            }
+          }
+        }
+      ]
+    },
+    {
+      "id": 32,
+      "title": "Fase T · corrente",
+      "type": "stat",
+      "gridPos": {
+        "x": 18,
+        "y": 20,
+        "w": 6,
+        "h": 5
+      },
+      "description": "",
+      "datasource": {
+        "type": "datasource",
+        "uid": "-- Dashboard --"
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "datasource",
+            "uid": "-- Dashboard --"
+          },
+          "panelId": 1,
+          "withTransforms": false
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "decimals": 1,
+          "noValue": "Sem dados",
+          "color": {
+            "mode": "fixed",
+            "fixedColor": "text"
+          },
+          "mappings": []
+        },
+        "overrides": [
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "corrente_c"
+            },
+            "properties": [
+              {
+                "id": "displayName",
+                "value": "Última leitura"
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "delta_c"
+            },
+            "properties": [
+              {
+                "id": "displayName",
+                "value": "Desvio (A)"
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "delta_pct_c"
+            },
+            "properties": [
+              {
+                "id": "displayName",
+                "value": "Desvio (%)"
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "corrente_c"
+            },
+            "properties": [
+              {
+                "id": "unit",
+                "value": "amp"
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "delta_pct_c"
+            },
+            "properties": [
+              {
+                "id": "unit",
+                "value": "percent"
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "delta_c"
+            },
+            "properties": [
+              {
+                "id": "unit",
+                "value": "amp"
+              }
+            ]
+          }
+        ]
+      },
+      "options": {
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "/.*/",
+          "values": false
+        },
+        "colorMode": "value",
+        "graphMode": "none",
+        "textMode": "value_and_name",
+        "justifyMode": "center",
+        "orientation": "auto",
+        "wideLayout": false,
+        "text": {
+          "valueSize": 22,
+          "titleSize": 12
+        }
+      },
+      "pluginVersion": "12.2.0",
+      "transformations": [
+        {
+          "id": "filterFieldsByName",
+          "options": {
+            "include": {
+              "names": [
+                "corrente_c",
+                "delta_c",
+                "delta_pct_c"
+              ]
+            }
+          }
+        },
+        {
+          "id": "organize",
+          "options": {
+            "indexByName": {
+              "corrente_c": 0,
+              "delta_c": 1,
+              "delta_pct_c": 2
+            }
+          }
+        }
+      ]
+    },
+    {
+      "id": 10,
+      "title": "Telemetria · ${sensor:text} / ${fase:text}",
+      "type": "stat",
+      "gridPos": {
+        "x": 0,
+        "y": 25,
+        "w": 8,
+        "h": 5
+      },
+      "description": "Regras: REGRAS-DASHBOARDS.md",
+      "datasource": {
+        "type": "datasource",
+        "uid": "-- Dashboard --"
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "datasource",
+            "uid": "-- Dashboard --"
+          },
+          "panelId": 1,
+          "withTransforms": false
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "decimals": 1,
+          "noValue": "Sem dados",
+          "color": {
+            "mode": "fixed",
+            "fixedColor": "text"
+          },
+          "mappings": []
+        },
+        "overrides": [
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "sensor_estado"
+            },
+            "properties": [
+              {
+                "id": "displayName",
+                "value": "Comunicação"
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "sensor_idade"
+            },
+            "properties": [
+              {
+                "id": "displayName",
+                "value": "Idade da leitura"
+              }
+            ]
+          },
           {
             "matcher": {
               "id": "byName",
@@ -3080,25 +2237,201 @@
                 "value": 0
               }
             ]
+          }
+        ]
+      },
+      "options": {
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "/.*/",
+          "values": false
+        },
+        "colorMode": "value",
+        "graphMode": "none",
+        "textMode": "value_and_name",
+        "justifyMode": "center",
+        "orientation": "auto",
+        "wideLayout": false,
+        "text": {
+          "valueSize": 22,
+          "titleSize": 12
+        }
+      },
+      "pluginVersion": "12.2.0",
+      "transformations": [
+        {
+          "id": "filterFieldsByName",
+          "options": {
+            "include": {
+              "names": [
+                "sensor_estado",
+                "sensor_idade"
+              ]
+            }
+          }
+        },
+        {
+          "id": "organize",
+          "options": {
+            "indexByName": {
+              "sensor_estado": 0,
+              "sensor_idade": 1
+            }
+          }
+        }
+      ]
+    },
+    {
+      "id": 11,
+      "title": "Medição · ${sensor:text} / ${fase:text}",
+      "type": "stat",
+      "gridPos": {
+        "x": 8,
+        "y": 25,
+        "w": 4,
+        "h": 5
+      },
+      "description": "",
+      "datasource": {
+        "type": "datasource",
+        "uid": "-- Dashboard --"
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "datasource",
+            "uid": "-- Dashboard --"
           },
-          {
-            "matcher": {
+          "panelId": 1,
+          "withTransforms": false
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "decimals": 1,
+          "noValue": "Sem dados",
+          "color": {
+            "mode": "fixed",
+            "fixedColor": "text"
+          },
+          "mappings": []
+        },
+        "overrides": []
+      },
+      "options": {
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "/.*/",
+          "values": false
+        },
+        "colorMode": "value",
+        "graphMode": "none",
+        "textMode": "value",
+        "justifyMode": "center",
+        "orientation": "auto",
+        "wideLayout": false,
+        "text": {
+          "valueSize": 22,
+          "titleSize": 12
+        }
+      },
+      "pluginVersion": "12.2.0",
+      "transformations": [
+        {
+          "id": "configFromData",
+          "options": {
+            "configRefId": "A",
+            "applyTo": {
               "id": "byName",
               "options": "sensor_valor"
             },
-            "properties": [
+            "mappings": [
               {
-                "id": "decimals",
-                "value": 1
+                "fieldName": "sensor_unit",
+                "handlerKey": "unit",
+                "reducerId": "lastNotNull"
               }
             ]
+          }
+        },
+        {
+          "id": "filterFieldsByName",
+          "options": {
+            "include": {
+              "names": [
+                "sensor_valor"
+              ]
+            }
+          }
+        },
+        {
+          "id": "organize",
+          "options": {
+            "indexByName": {
+              "sensor_valor": 0
+            }
+          }
+        }
+      ]
+    },
+    {
+      "id": 17,
+      "title": "Faixa da leitura selecionada",
+      "type": "stat",
+      "gridPos": {
+        "x": 12,
+        "y": 25,
+        "w": 4,
+        "h": 5
+      },
+      "description": "",
+      "datasource": {
+        "type": "datasource",
+        "uid": "-- Dashboard --"
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "datasource",
+            "uid": "-- Dashboard --"
           },
+          "panelId": 1,
+          "withTransforms": false
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "none",
+          "decimals": 0,
+          "noValue": "Sem dados",
+          "color": {
+            "mode": "fixed",
+            "fixedColor": "text"
+          },
+          "mappings": []
+        },
+        "overrides": [
           {
             "matcher": {
               "id": "byName",
               "options": "sensor_severity"
             },
             "properties": [
+              {
+                "id": "unit",
+                "value": "none"
+              },
+              {
+                "id": "decimals",
+                "value": 0
+              },
               {
                 "id": "color",
                 "value": {
@@ -3136,23 +2469,23 @@
                     "type": "value",
                     "options": {
                       "-1": {
-                        "text": "SEM DADOS RECENTES",
+                        "text": "Sem dados recentes",
                         "color": "gray"
                       },
                       "0": {
-                        "text": "NORMAL",
+                        "text": "Normal",
                         "color": "green"
                       },
                       "1": {
-                        "text": "ATENÇÃO",
+                        "text": "Atenção",
                         "color": "yellow"
                       },
                       "2": {
-                        "text": "MODERADO",
+                        "text": "Moderado",
                         "color": "orange"
                       },
                       "3": {
-                        "text": "CRÍTICO",
+                        "text": "Crítico",
                         "color": "red"
                       }
                     }
@@ -3164,268 +2497,41 @@
         ]
       },
       "options": {
-        "inlineEditing": false,
-        "panZoom": false,
-        "zoomToContent": true,
-        "showAdvancedTypes": false,
-        "tooltip": {
-          "mode": "single",
-          "disableForOneClick": true
-        },
-        "root": {
-          "name": "Eletrometry",
-          "type": "frame",
-          "placement": {
-            "left": 0,
-            "top": 0,
-            "width": 520,
-            "height": 120
-          },
-          "background": {
-            "color": {
-              "fixed": "#FFFFFF"
-            }
-          },
-          "elements": [
-            {
-              "name": "sensor_estado-12-4",
-              "type": "metric-value",
-              "placement": {
-                "left": 12,
-                "top": 4,
-                "width": 490,
-                "height": 35
-              },
-              "constraint": {
-                "horizontal": "scale",
-                "vertical": "scale"
-              },
-              "background": {
-                "color": {
-                  "fixed": "transparent"
-                }
-              },
-              "border": {
-                "radius": 8,
-                "width": 0
-              },
-              "config": {
-                "text": {
-                  "mode": "field",
-                  "field": "sensor_estado",
-                  "fixed": ""
-                },
-                "align": "left",
-                "valign": "middle",
-                "size": 22,
-                "color": {
-                  "field": "sensor_estado",
-                  "fixed": "#20234F"
-                }
-              }
-            },
-            {
-              "name": "sensor_severity-12-45",
-              "type": "metric-value",
-              "placement": {
-                "left": 12,
-                "top": 45,
-                "width": 265,
-                "height": 30
-              },
-              "constraint": {
-                "horizontal": "scale",
-                "vertical": "scale"
-              },
-              "background": {
-                "color": {
-                  "fixed": "transparent"
-                }
-              },
-              "border": {
-                "radius": 8,
-                "width": 0
-              },
-              "config": {
-                "text": {
-                  "mode": "field",
-                  "field": "sensor_severity",
-                  "fixed": ""
-                },
-                "align": "left",
-                "valign": "middle",
-                "size": 16,
-                "color": {
-                  "field": "sensor_severity",
-                  "fixed": "#20234F"
-                }
-              }
-            },
-            {
-              "name": "Tempo sem atualização-12-86",
-              "type": "text",
-              "placement": {
-                "left": 12,
-                "top": 86,
-                "width": 315,
-                "height": 25
-              },
-              "constraint": {
-                "horizontal": "scale",
-                "vertical": "scale"
-              },
-              "background": {
-                "color": {
-                  "fixed": "transparent"
-                }
-              },
-              "border": {
-                "radius": 8,
-                "width": 0
-              },
-              "config": {
-                "text": {
-                  "mode": "fixed",
-                  "fixed": "Tempo sem atualização"
-                },
-                "align": "left",
-                "valign": "middle",
-                "size": 14,
-                "color": {
-                  "fixed": "#77859F"
-                }
-              }
-            },
-            {
-              "name": "sensor_idade-343-85",
-              "type": "metric-value",
-              "placement": {
-                "left": 343,
-                "top": 85,
-                "width": 160,
-                "height": 27
-              },
-              "constraint": {
-                "horizontal": "scale",
-                "vertical": "scale"
-              },
-              "background": {
-                "color": {
-                  "fixed": "transparent"
-                }
-              },
-              "border": {
-                "radius": 8,
-                "width": 0
-              },
-              "config": {
-                "text": {
-                  "mode": "field",
-                  "field": "sensor_idade",
-                  "fixed": ""
-                },
-                "align": "left",
-                "valign": "middle",
-                "size": 18,
-                "color": {
-                  "field": "sensor_idade",
-                  "fixed": "#20234F"
-                }
-              }
-            }
-          ]
-        }
-      },
-      "pluginVersion": "12.2.0"
-    },
-    {
-      "id": 11,
-      "title": "Medição · ${sensor:text} / ${fase:text}",
-      "type": "bargauge",
-      "gridPos": {
-        "x": 16,
-        "y": 22,
-        "w": 8,
-        "h": 2
-      },
-      "description": "",
-      "datasource": {
-        "type": "datasource",
-        "uid": "-- Dashboard --"
-      },
-      "targets": [
-        {
-          "refId": "A",
-          "datasource": {
-            "type": "datasource",
-            "uid": "-- Dashboard --"
-          },
-          "panelId": 1,
-          "withTransforms": false
-        }
-      ],
-      "fieldConfig": {
-        "defaults": {
-          "unit": "short",
-          "decimals": 1,
-          "noValue": "Sem dados",
-          "color": {
-            "mode": "fixed",
-            "fixedColor": "#1264F5"
-          },
-          "mappings": [],
-          "min": 0
-        },
-        "overrides": []
-      },
-      "options": {
         "reduceOptions": {
           "calcs": [
             "lastNotNull"
           ],
-          "fields": "sensor_valor",
+          "fields": "/.*/",
           "values": false
         },
         "colorMode": "value",
         "graphMode": "none",
         "textMode": "value",
         "justifyMode": "center",
-        "orientation": "horizontal",
-        "displayMode": "gradient",
-        "showUnfilled": true,
-        "valueMode": "color"
+        "orientation": "auto",
+        "wideLayout": false,
+        "text": {
+          "valueSize": 22,
+          "titleSize": 12
+        }
       },
       "pluginVersion": "12.2.0",
       "transformations": [
-        {
-          "id": "configFromData",
-          "options": {
-            "configRefId": "A",
-            "applyTo": {
-              "id": "byName",
-              "options": "sensor_valor"
-            },
-            "mappings": [
-              {
-                "fieldName": "sensor_max",
-                "handlerKey": "max",
-                "reducerId": "lastNotNull"
-              },
-              {
-                "fieldName": "sensor_unit",
-                "handlerKey": "unit",
-                "reducerId": "lastNotNull"
-              }
-            ]
-          }
-        },
         {
           "id": "filterFieldsByName",
           "options": {
             "include": {
               "names": [
-                "sensor_valor"
+                "sensor_severity"
               ]
+            }
+          }
+        },
+        {
+          "id": "organize",
+          "options": {
+            "indexByName": {
+              "sensor_severity": 0
             }
           }
         }
@@ -3433,13 +2539,13 @@
     },
     {
       "id": 12,
-      "title": "Correntes · atualização por fase",
-      "type": "canvas",
+      "title": "Comunicação · correntes R / S / T",
+      "type": "stat",
       "gridPos": {
         "x": 16,
-        "y": 24,
+        "y": 25,
         "w": 8,
-        "h": 4
+        "h": 5
       },
       "description": "",
       "datasource": {
@@ -3459,12 +2565,12 @@
       ],
       "fieldConfig": {
         "defaults": {
-          "unit": "short",
+          "unit": "none",
           "decimals": 1,
           "noValue": "Sem dados",
           "color": {
             "mode": "fixed",
-            "fixedColor": "#20234F"
+            "fixedColor": "text"
           },
           "mappings": []
         },
@@ -3472,128 +2578,12 @@
           {
             "matcher": {
               "id": "byName",
-              "options": "corrente_a"
-            },
-            "properties": [
-              {
-                "id": "unit",
-                "value": "amp"
-              }
-            ]
-          },
-          {
-            "matcher": {
-              "id": "byName",
-              "options": "idade_a"
-            },
-            "properties": [
-              {
-                "id": "unit",
-                "value": "s"
-              },
-              {
-                "id": "decimals",
-                "value": 0
-              },
-              {
-                "id": "color",
-                "value": {
-                  "mode": "thresholds"
-                }
-              },
-              {
-                "id": "thresholds",
-                "value": {
-                  "mode": "absolute",
-                  "steps": [
-                    {
-                      "value": null,
-                      "color": "green"
-                    },
-                    {
-                      "value": 15,
-                      "color": "yellow"
-                    },
-                    {
-                      "value": 30,
-                      "color": "orange"
-                    },
-                    {
-                      "value": 60,
-                      "color": "red"
-                    }
-                  ]
-                }
-              }
-            ]
-          },
-          {
-            "matcher": {
-              "id": "byName",
               "options": "saude_a"
             },
             "properties": [
               {
-                "id": "unit",
-                "value": "none"
-              }
-            ]
-          },
-          {
-            "matcher": {
-              "id": "byName",
-              "options": "corrente_b"
-            },
-            "properties": [
-              {
-                "id": "unit",
-                "value": "amp"
-              }
-            ]
-          },
-          {
-            "matcher": {
-              "id": "byName",
-              "options": "idade_b"
-            },
-            "properties": [
-              {
-                "id": "unit",
-                "value": "s"
-              },
-              {
-                "id": "decimals",
-                "value": 0
-              },
-              {
-                "id": "color",
-                "value": {
-                  "mode": "thresholds"
-                }
-              },
-              {
-                "id": "thresholds",
-                "value": {
-                  "mode": "absolute",
-                  "steps": [
-                    {
-                      "value": null,
-                      "color": "green"
-                    },
-                    {
-                      "value": 15,
-                      "color": "yellow"
-                    },
-                    {
-                      "value": 30,
-                      "color": "orange"
-                    },
-                    {
-                      "value": 60,
-                      "color": "red"
-                    }
-                  ]
-                }
+                "id": "displayName",
+                "value": "R"
               }
             ]
           },
@@ -3604,66 +2594,8 @@
             },
             "properties": [
               {
-                "id": "unit",
-                "value": "none"
-              }
-            ]
-          },
-          {
-            "matcher": {
-              "id": "byName",
-              "options": "corrente_c"
-            },
-            "properties": [
-              {
-                "id": "unit",
-                "value": "amp"
-              }
-            ]
-          },
-          {
-            "matcher": {
-              "id": "byName",
-              "options": "idade_c"
-            },
-            "properties": [
-              {
-                "id": "unit",
-                "value": "s"
-              },
-              {
-                "id": "decimals",
-                "value": 0
-              },
-              {
-                "id": "color",
-                "value": {
-                  "mode": "thresholds"
-                }
-              },
-              {
-                "id": "thresholds",
-                "value": {
-                  "mode": "absolute",
-                  "steps": [
-                    {
-                      "value": null,
-                      "color": "green"
-                    },
-                    {
-                      "value": 15,
-                      "color": "yellow"
-                    },
-                    {
-                      "value": 30,
-                      "color": "orange"
-                    },
-                    {
-                      "value": 60,
-                      "color": "red"
-                    }
-                  ]
-                }
+                "id": "displayName",
+                "value": "S"
               }
             ]
           },
@@ -3674,479 +2606,57 @@
             },
             "properties": [
               {
-                "id": "unit",
-                "value": "none"
+                "id": "displayName",
+                "value": "T"
               }
             ]
           }
         ]
       },
       "options": {
-        "inlineEditing": false,
-        "panZoom": false,
-        "zoomToContent": true,
-        "showAdvancedTypes": false,
-        "tooltip": {
-          "mode": "single",
-          "disableForOneClick": true
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "/.*/",
+          "values": false
         },
-        "root": {
-          "name": "Eletrometry",
-          "type": "frame",
-          "placement": {
-            "left": 0,
-            "top": 0,
-            "width": 520,
-            "height": 130
-          },
-          "background": {
-            "color": {
-              "fixed": "#FFFFFF"
-            }
-          },
-          "elements": [
-            {
-              "name": "Fase R-12-3",
-              "type": "text",
-              "placement": {
-                "left": 12,
-                "top": 3,
-                "width": 160,
-                "height": 24
-              },
-              "constraint": {
-                "horizontal": "scale",
-                "vertical": "scale"
-              },
-              "background": {
-                "color": {
-                  "fixed": "transparent"
-                }
-              },
-              "border": {
-                "radius": 8,
-                "width": 0
-              },
-              "config": {
-                "text": {
-                  "mode": "fixed",
-                  "fixed": "Fase R"
-                },
-                "align": "left",
-                "valign": "middle",
-                "size": 14,
-                "color": {
-                  "fixed": "#20234F"
-                }
-              }
-            },
-            {
-              "name": "corrente_a-12-30",
-              "type": "metric-value",
-              "placement": {
-                "left": 12,
-                "top": 30,
-                "width": 160,
-                "height": 32
-              },
-              "constraint": {
-                "horizontal": "scale",
-                "vertical": "scale"
-              },
-              "background": {
-                "color": {
-                  "fixed": "transparent"
-                }
-              },
-              "border": {
-                "radius": 8,
-                "width": 0
-              },
-              "config": {
-                "text": {
-                  "mode": "field",
-                  "field": "corrente_a",
-                  "fixed": ""
-                },
-                "align": "left",
-                "valign": "middle",
-                "size": 22,
-                "color": {
-                  "field": "corrente_a",
-                  "fixed": "#20234F"
-                }
-              }
-            },
-            {
-              "name": "saude_a-12-68",
-              "type": "metric-value",
-              "placement": {
-                "left": 12,
-                "top": 68,
-                "width": 160,
-                "height": 24
-              },
-              "constraint": {
-                "horizontal": "scale",
-                "vertical": "scale"
-              },
-              "background": {
-                "color": {
-                  "fixed": "transparent"
-                }
-              },
-              "border": {
-                "radius": 8,
-                "width": 0
-              },
-              "config": {
-                "text": {
-                  "mode": "field",
-                  "field": "saude_a",
-                  "fixed": ""
-                },
-                "align": "left",
-                "valign": "middle",
-                "size": 12,
-                "color": {
-                  "field": "saude_a",
-                  "fixed": "#20234F"
-                }
-              }
-            },
-            {
-              "name": "idade_a-12-96",
-              "type": "metric-value",
-              "placement": {
-                "left": 12,
-                "top": 96,
-                "width": 160,
-                "height": 24
-              },
-              "constraint": {
-                "horizontal": "scale",
-                "vertical": "scale"
-              },
-              "background": {
-                "color": {
-                  "fixed": "transparent"
-                }
-              },
-              "border": {
-                "radius": 8,
-                "width": 0
-              },
-              "config": {
-                "text": {
-                  "mode": "field",
-                  "field": "idade_a",
-                  "fixed": ""
-                },
-                "align": "left",
-                "valign": "middle",
-                "size": 13,
-                "color": {
-                  "field": "idade_a",
-                  "fixed": "#20234F"
-                }
-              }
-            },
-            {
-              "name": "Fase S-180-3",
-              "type": "text",
-              "placement": {
-                "left": 180,
-                "top": 3,
-                "width": 160,
-                "height": 24
-              },
-              "constraint": {
-                "horizontal": "scale",
-                "vertical": "scale"
-              },
-              "background": {
-                "color": {
-                  "fixed": "transparent"
-                }
-              },
-              "border": {
-                "radius": 8,
-                "width": 0
-              },
-              "config": {
-                "text": {
-                  "mode": "fixed",
-                  "fixed": "Fase S"
-                },
-                "align": "left",
-                "valign": "middle",
-                "size": 14,
-                "color": {
-                  "fixed": "#20234F"
-                }
-              }
-            },
-            {
-              "name": "corrente_b-180-30",
-              "type": "metric-value",
-              "placement": {
-                "left": 180,
-                "top": 30,
-                "width": 160,
-                "height": 32
-              },
-              "constraint": {
-                "horizontal": "scale",
-                "vertical": "scale"
-              },
-              "background": {
-                "color": {
-                  "fixed": "transparent"
-                }
-              },
-              "border": {
-                "radius": 8,
-                "width": 0
-              },
-              "config": {
-                "text": {
-                  "mode": "field",
-                  "field": "corrente_b",
-                  "fixed": ""
-                },
-                "align": "left",
-                "valign": "middle",
-                "size": 22,
-                "color": {
-                  "field": "corrente_b",
-                  "fixed": "#20234F"
-                }
-              }
-            },
-            {
-              "name": "saude_b-180-68",
-              "type": "metric-value",
-              "placement": {
-                "left": 180,
-                "top": 68,
-                "width": 160,
-                "height": 24
-              },
-              "constraint": {
-                "horizontal": "scale",
-                "vertical": "scale"
-              },
-              "background": {
-                "color": {
-                  "fixed": "transparent"
-                }
-              },
-              "border": {
-                "radius": 8,
-                "width": 0
-              },
-              "config": {
-                "text": {
-                  "mode": "field",
-                  "field": "saude_b",
-                  "fixed": ""
-                },
-                "align": "left",
-                "valign": "middle",
-                "size": 12,
-                "color": {
-                  "field": "saude_b",
-                  "fixed": "#20234F"
-                }
-              }
-            },
-            {
-              "name": "idade_b-180-96",
-              "type": "metric-value",
-              "placement": {
-                "left": 180,
-                "top": 96,
-                "width": 160,
-                "height": 24
-              },
-              "constraint": {
-                "horizontal": "scale",
-                "vertical": "scale"
-              },
-              "background": {
-                "color": {
-                  "fixed": "transparent"
-                }
-              },
-              "border": {
-                "radius": 8,
-                "width": 0
-              },
-              "config": {
-                "text": {
-                  "mode": "field",
-                  "field": "idade_b",
-                  "fixed": ""
-                },
-                "align": "left",
-                "valign": "middle",
-                "size": 13,
-                "color": {
-                  "field": "idade_b",
-                  "fixed": "#20234F"
-                }
-              }
-            },
-            {
-              "name": "Fase T-348-3",
-              "type": "text",
-              "placement": {
-                "left": 348,
-                "top": 3,
-                "width": 160,
-                "height": 24
-              },
-              "constraint": {
-                "horizontal": "scale",
-                "vertical": "scale"
-              },
-              "background": {
-                "color": {
-                  "fixed": "transparent"
-                }
-              },
-              "border": {
-                "radius": 8,
-                "width": 0
-              },
-              "config": {
-                "text": {
-                  "mode": "fixed",
-                  "fixed": "Fase T"
-                },
-                "align": "left",
-                "valign": "middle",
-                "size": 14,
-                "color": {
-                  "fixed": "#20234F"
-                }
-              }
-            },
-            {
-              "name": "corrente_c-348-30",
-              "type": "metric-value",
-              "placement": {
-                "left": 348,
-                "top": 30,
-                "width": 160,
-                "height": 32
-              },
-              "constraint": {
-                "horizontal": "scale",
-                "vertical": "scale"
-              },
-              "background": {
-                "color": {
-                  "fixed": "transparent"
-                }
-              },
-              "border": {
-                "radius": 8,
-                "width": 0
-              },
-              "config": {
-                "text": {
-                  "mode": "field",
-                  "field": "corrente_c",
-                  "fixed": ""
-                },
-                "align": "left",
-                "valign": "middle",
-                "size": 22,
-                "color": {
-                  "field": "corrente_c",
-                  "fixed": "#20234F"
-                }
-              }
-            },
-            {
-              "name": "saude_c-348-68",
-              "type": "metric-value",
-              "placement": {
-                "left": 348,
-                "top": 68,
-                "width": 160,
-                "height": 24
-              },
-              "constraint": {
-                "horizontal": "scale",
-                "vertical": "scale"
-              },
-              "background": {
-                "color": {
-                  "fixed": "transparent"
-                }
-              },
-              "border": {
-                "radius": 8,
-                "width": 0
-              },
-              "config": {
-                "text": {
-                  "mode": "field",
-                  "field": "saude_c",
-                  "fixed": ""
-                },
-                "align": "left",
-                "valign": "middle",
-                "size": 12,
-                "color": {
-                  "field": "saude_c",
-                  "fixed": "#20234F"
-                }
-              }
-            },
-            {
-              "name": "idade_c-348-96",
-              "type": "metric-value",
-              "placement": {
-                "left": 348,
-                "top": 96,
-                "width": 160,
-                "height": 24
-              },
-              "constraint": {
-                "horizontal": "scale",
-                "vertical": "scale"
-              },
-              "background": {
-                "color": {
-                  "fixed": "transparent"
-                }
-              },
-              "border": {
-                "radius": 8,
-                "width": 0
-              },
-              "config": {
-                "text": {
-                  "mode": "field",
-                  "field": "idade_c",
-                  "fixed": ""
-                },
-                "align": "left",
-                "valign": "middle",
-                "size": 13,
-                "color": {
-                  "field": "idade_c",
-                  "fixed": "#20234F"
-                }
-              }
-            }
-          ]
+        "colorMode": "value",
+        "graphMode": "none",
+        "textMode": "value_and_name",
+        "justifyMode": "center",
+        "orientation": "auto",
+        "wideLayout": false,
+        "text": {
+          "valueSize": 22,
+          "titleSize": 12
         }
       },
-      "pluginVersion": "12.2.0"
+      "pluginVersion": "12.2.0",
+      "transformations": [
+        {
+          "id": "filterFieldsByName",
+          "options": {
+            "include": {
+              "names": [
+                "saude_a",
+                "saude_b",
+                "saude_c"
+              ]
+            }
+          }
+        },
+        {
+          "id": "organize",
+          "options": {
+            "indexByName": {
+              "saude_a": 0,
+              "saude_b": 1,
+              "saude_c": 2
+            }
+          }
+        }
+      ]
     }
   ],
   "templating": {
@@ -4173,7 +2683,7 @@
       },
       {
         "name": "metrica",
-        "label": "Tempo de desvio",
+        "label": "Desvio",
         "type": "custom",
         "query": "Temperatura : temperatura,Corrente : corrente",
         "multi": false,
@@ -4197,7 +2707,7 @@
       },
       {
         "name": "sensor",
-        "label": "Saúde · sensor",
+        "label": "Sensor",
         "type": "custom",
         "query": "Temperatura : temperatura,Corrente : corrente",
         "multi": false,
@@ -4221,7 +2731,7 @@
       },
       {
         "name": "fase",
-        "label": "Saúde · fase",
+        "label": "Fase",
         "type": "custom",
         "query": "R (A) : A,S (B) : B,T (C) : C",
         "multi": false,

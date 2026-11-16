@@ -15,3 +15,15 @@ A inspeção visual em navegador/Grafana não foi concluída neste ambiente. Con
 `lab.ps1 dashboards` testa as consultas pelo Grafana/MySQL real da EC2 nos últimos cinco minutos antes de publicar os JSONs. Isso verifica conexão e compatibilidade SQL; não comprova desempenho de um mês inteiro nem aparência no navegador.
 
 Esta versão não persiste incidentes nem envia notificações. As fórmulas provisórias estão em REGRAS-DASHBOARDS.md.
+
+## Revisão visual v3 — 02/11/2026
+
+Executado nesta revisão:
+
+- 9 testes de `python -m unittest discover -s tests -p 'test_integrated.py' -v`: todos passaram.
+- User-data representativo comprimido: 15.053 bytes, abaixo do limite de 16.384. A validação Terraform ainda deve conferir os valores efetivos do ambiente.
+- JSONs: IDs únicos, painéis sem sobreposição, largura dentro das 24 colunas, referências a painéis existentes, fontes compartilhadas sem aplicar as transformações do painel de origem.
+- Pacote de observabilidade regenerado a partir do gerador atualizado.
+- Consultas SQL e parâmetros de análise preservados byte a byte em relação ao ZIP recebido. Não houve novo ensaio em MySQL real nesta revisão.
+
+Não executado nesta revisão: implantação remota, comparação visual renderizada no Grafana, teste de carga do RDS ou Terraform apply. As validações anteriores listadas acima são o histórico do pacote recebido, não uma nova execução.

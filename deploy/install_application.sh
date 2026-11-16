@@ -11,6 +11,8 @@ for part in consumer/consumidor_sqs_mysql.py telemetry/simulador_eletrometry.py 
   test -f "$package_dir/$part"
 done
 /opt/eletrometry/venv/bin/python -c 'import boto3, mysql.connector; from zoneinfo import ZoneInfo; ZoneInfo("America/Sao_Paulo")'
+simulator_was_active=false
+if systemctl is-active --quiet eletrometry-simulator.service; then simulator_was_active=true; fi
 systemctl stop eletrometry-simulator.service 2>/dev/null || true
 systemctl stop eletrometry-consumer.service
 install -d -m 0755 /opt/eletrometry/consumer /opt/eletrometry/telemetry
@@ -32,5 +34,8 @@ PY
 systemctl daemon-reload
 systemctl enable --now eletrometry-consumer.service
 /opt/eletrometry/venv/bin/python /opt/eletrometry/check_database.py
-systemctl enable --now eletrometry-simulator.service
-echo 'Aplicacao integrada instalada. Simulador continuo iniciado. Execute status, testar e simular.'
+if [[ "$simulator_was_active" == true ]]; then
+  systemctl start eletrometry-simulator.service
+fi
+echo 'ELETROMETRY - ingestao em lotes instalada. Estado anterior do simulador preservado.'
+echo 'Execute testar; depois simular -Cenario criticidades -Duracao 240. iniciar e opcional para geracao continua.' 

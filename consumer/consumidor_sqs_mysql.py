@@ -7,6 +7,7 @@ import logging
 import math
 import re
 import sys
+import time
 from datetime import datetime, timezone
 from pathlib import Path
 
@@ -59,43 +60,71 @@ def row_from_body(body):
 
 def consume(sqs, db, queue_url, max_batches):
     batches = accepted = invalid = 0
+    last_log = 0.0
+    ack_failed = False
     while not max_batches or batches < max_batches:
-        response = sqs.receive_message(QueueUrl=queue_url, MaxNumberOfMessages=10,
-                                       WaitTimeSeconds=10, VisibilityTimeout=120)
+        response = sqs.receive_message(
+            QueueUrl=queue_url, MaxNumberOfMessages=10, WaitTimeSeconds=10,
+            VisibilityTimeout=120, MessageSystemAttributeNames=['SentTimestamp'])
         messages = response.get('Messages', [])
         if not messages:
-            LOG.info('Nenhuma mensagem disponivel nesta consulta.')
             if max_batches:
                 break
             continue
         batches += 1
+        valid = []
         for msg in messages:
             try:
                 row = row_from_body(msg['Body'])
-            except (ValueError, TypeError, KeyError) as exc:
+            except (ValueError, TypeError, KeyError, AttributeError) as exc:
                 invalid += 1
-                LOG.error('Mensagem SQS %s invalida; preservada na fila; seguindo com as demais: %s',
+                LOG.error('Mensagem SQS %s invalida; preservada na fila: %s',
                           msg.get('MessageId'), exc)
                 continue
+            valid.append((msg, row))
+        if not valid:
+            continue
+        started = time.monotonic()
+        # Grava imediatamente o lote recebido, sem esperar juntar dez mensagens.
+        try:
+            cursor = db.cursor()
             try:
-                cursor = db.cursor()
-                try:
-                    cursor.execute(INSERT, row)
-                    inserted = cursor.rowcount
-                    db.commit()
-                finally:
-                    cursor.close()
-            except mysql.connector.Error:
-                db.rollback()
-                LOG.exception('Falha no MySQL; mensagem preservada para nova tentativa.')
-                return 1
-            # Uma falha de DELETE pode resultar em reentrega; event_id e chave primaria.
-            sqs.delete_message(QueueUrl=queue_url, ReceiptHandle=msg['ReceiptHandle'])
-            accepted += 1
-            LOG.info('%s: %s | %s', row[2], row[3], 'inserida' if inserted else 'duplicata confirmada')
-        LOG.info('Lotes %s | mensagens confirmadas %s | invalidas preservadas %s',
-                 batches, accepted, invalid)
-    return 0
+                cursor.executemany(INSERT, [row for _, row in valid])
+                db.commit()
+            finally:
+                cursor.close()
+        except mysql.connector.Error:
+            db.rollback()
+            LOG.exception('Falha no MySQL; lote inteiro preservado para nova tentativa.')
+            return 1
+        db_ms = (time.monotonic() - started) * 1000
+        committed_at = time.time()
+        queue_ages = []
+        for msg, _ in valid:
+            try:
+                queue_ages.append(committed_at - int(msg['Attributes']['SentTimestamp']) / 1000)
+            except (KeyError, ValueError, TypeError):
+                pass
+        # Confirma SOMENTE depois do commit. Reentregas sao idempotentes por event_id.
+        entries = [{'Id': str(i), 'ReceiptHandle': msg['ReceiptHandle']}
+                   for i, (msg, _) in enumerate(valid)]
+        result = sqs.delete_message_batch(QueueUrl=queue_url, Entries=entries)
+        confirmed = {item['Id'] for item in result.get('Successful', [])}
+        pending = {item['Id'] for item in entries} - confirmed
+        accepted += len(confirmed & {item['Id'] for item in entries})
+        if pending:
+            ack_failed = True
+            LOG.warning('MySQL confirmado; %d mensagens sem confirmacao SQS. '
+                        'Reentrega sera deduplicada. Codigos: %s', len(pending),
+                        [item.get('Code') for item in result.get('Failed', [])])
+        now = time.monotonic()
+        if now - last_log >= 5 or (max_batches and batches >= max_batches):
+            LOG.info('Lotes %d | confirmadas SQS %d | invalidas preservadas %d | '
+                     'ultimo lote %d | MySQL+commit %.1f ms | SQS->commit max %s s',
+                     batches, accepted, invalid, len(valid), db_ms,
+                     ('%.3f' % max(queue_ages)) if queue_ages else 'indisponivel')
+            last_log = now
+    return 1 if ack_failed else 0
 
 
 def main():
