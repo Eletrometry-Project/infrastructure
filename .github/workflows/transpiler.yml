@@ -1,0 +1,40 @@
+name: Transpiler ELT
+on:
+  push:
+    paths: ['transpiler/**', '.github/workflows/transpiler.yml']
+  pull_request:
+    paths: ['transpiler/**', '.github/workflows/transpiler.yml']
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  compiler:
+    runs-on: ubuntu-latest
+    services:
+      mysql:
+        image: mysql:8.0
+        env:
+          MYSQL_ROOT_PASSWORD: test-only
+          MYSQL_DATABASE: elt_test
+        ports: ['3306:3306']
+        options: >-
+          --health-cmd="mysqladmin ping -h localhost -ptest-only"
+          --health-interval=10s --health-timeout=5s --health-retries=12
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - run: python -m pip install mysql-connector-python==9.1.0
+      - run: python -m compileall -q transpiler
+      - run: python -m unittest discover -s transpiler/tests -v
+        env:
+          ELT_TEST_MYSQL: '1'
+      - run: python -m transpiler transpiler/examples/temperatura.elt --out gerado --explain
+      - run: python -m zipfile -c elt-lambda.zip transpiler
+      - uses: actions/upload-artifact@v4
+        with:
+          name: elt-transpiler
+          path: |
+            gerado/
+            elt-lambda.zip

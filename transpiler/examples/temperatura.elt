@@ -1,0 +1,9 @@
+# Limites ilustrativos do laboratório.
+REGRA "Temperatura crítica"
+ CABINE "cabine-002"
+ FASE QUALQUER
+ QUANDO TEMPERATURA >= 90 C
+ DURANTE 10 SEGUNDOS
+ LACUNA_MAXIMA 5 SEGUNDOS
+ CLASSIFICAR CRITICO
+FIM
