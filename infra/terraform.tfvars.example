@@ -9,3 +9,7 @@ aws_profile = "eletrometry-lab"
 # Se JA APLICOU a revisao anterior com sua chave, preserve-a para evitar troca da EC2:
 # ssh_public_key_path = "~/.ssh/eletrometry.pub"
 # As senhas e a chave sao geradas automaticamente; nao preencha senhas aqui.
+
+# Transpilador: incluido no apply; null usa LabRole da conta acima.
+# A role precisa confiar em lambda.amazonaws.com e permitir S3, logs e SQS.
+# transpiler_lambda_role_arn = "arn:aws:iam::831154260318:role/ROLE_AUTORIZADA"

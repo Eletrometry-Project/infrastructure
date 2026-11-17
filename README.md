@@ -1,3 +1,5 @@
+**Transpilador ELT na AWS:** o mesmo Terraform agora empacota e provisiona S3 + Lambda. Veja o [manual de implantação, testes e GitHub Actions](transpiler/AWS.md). O workflow de testes não exige secrets AWS; o apply usa as credenciais e o state do seu ambiente.
+
 > Revisão do instalador de dashboards: leia `REVISAO-INSTALADOR.md`. A detecção reportada no Defender ainda não foi reproduzida ou resolvida de forma confirmada.
 
 **Portal React na AWS** · A revisão instala o frontend em Docker numa EC2 dedicada. Execute `.\lab.ps1 subir` na pasta do state e abra o IP HTTPS indicado. Para atualização, certificado e cadastro, veja [PORTAL-AWS.md](PORTAL-AWS.md).

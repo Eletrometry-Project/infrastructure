@@ -23,3 +23,11 @@ infra/observability.auto.tfvars.json
 .grafana-last-command.json
 
 portal-lab.cer
+
+# Artefatos gerados; nunca versionar state, planos ou variaveis locais.
+*.auto.tfvars.json
+infra/elt-lambda.zip
+infra/modules/transpiler/elt-lambda-test.zip
+elt-lambda.zip
+gerado/
+gerado-erro/
