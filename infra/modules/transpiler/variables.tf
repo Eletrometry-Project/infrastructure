@@ -1,8 +1,8 @@
 variable "name" {
   type = string
   validation {
-    condition     = can(regex("^[a-z][a-z0-9-]{1,39}$", var.name))
-    error_message = "Use 2 a 40 caracteres minusculos, numeros e hifens."
+    condition     = can(regex("^[a-z][a-z0-9-]{1,35}$", var.name))
+    error_message = "Use 2 a 36 caracteres minusculos, numeros e hifens."
   }
 }
 

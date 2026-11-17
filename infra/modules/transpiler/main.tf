@@ -72,7 +72,7 @@ resource "aws_cloudwatch_log_group" "lambda" {
 resource "aws_sqs_queue" "failures" {
   name                      = "${var.name}-failures"
   message_retention_seconds = 1209600
-  sqs_managed_sse_enabled    = true
+  sqs_managed_sse_enabled   = true
 }
 
 resource "aws_lambda_function" "compiler" {
@@ -91,7 +91,7 @@ resource "aws_lambda_function" "compiler" {
 }
 
 resource "aws_lambda_function_event_invoke_config" "compiler" {
-  function_name               = aws_lambda_function.compiler.function_name
+  function_name                = aws_lambda_function.compiler.function_name
   maximum_retry_attempts       = 2
   maximum_event_age_in_seconds = 3600
   destination_config {
